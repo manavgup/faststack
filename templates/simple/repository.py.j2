@@ -1,0 +1,50 @@
+{#- --------------------------------------------------------------------------
+    repository.py.j2 — Generate a repository from an EntityDefinition.
+
+    Template variable: entity (EntityDefinition)
+   -------------------------------------------------------------------------- -#}
+"""{{ entity.name }} repository."""
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.{{ entity.name | lower }} import {{ entity.name }}
+from faststack_core.base.repository import SqlAlchemyRepository
+
+
+class {{ entity.name }}Repository(SqlAlchemyRepository[{{ entity.name }}]):
+    """{{ entity.name }} repository with custom query methods.
+
+    Base CRUD operations are inherited from SqlAlchemyRepository:
+      - get_by_id(id) -> {{ entity.name }} | None
+      - list(skip, limit) -> list[{{ entity.name }}]
+      - create(data) -> {{ entity.name }}
+      - update(id, data) -> {{ entity.name }}
+      - delete(id) -> None  (soft-delete when available)
+      - count() -> int
+
+    Add custom query methods below.
+    """
+
+    def __init__(self, db: AsyncSession) -> None:
+        super().__init__(db, {{ entity.name }})
+{%- if entity.searchable %}
+
+    async def search(self, query: str, skip: int = 0, limit: int = 100) -> list[{{ entity.name }}]:
+        """Search {{ entity.name | lower }} records by {{ entity.searchable | join(", ") }}."""
+        from sqlalchemy import or_, select
+
+        stmt = (
+            select({{ entity.name }})
+            .where(
+                or_(
+{%- for field in entity.searchable %}
+                    {{ entity.name }}.{{ field }}.ilike(f"%{query}%"),
+{%- endfor %}
+                )
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+{%- endif %}

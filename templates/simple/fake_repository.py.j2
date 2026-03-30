@@ -1,0 +1,46 @@
+"""Fake {{ entity.name }} repository for unit testing."""
+
+import uuid
+from uuid import UUID
+
+from faststack_core.exceptions.domain import NotFoundError
+
+from app.models.{{ entity.name | lower }} import {{ entity.name }}
+
+
+class Fake{{ entity.name }}Repository:
+    """In-memory {{ entity.name }} repository satisfying the Repository Protocol.
+
+    Uses a dict as backing store. No database required.
+    """
+
+    def __init__(self) -> None:
+        self._store: dict[UUID, {{ entity.name }}] = {}
+
+    async def get_by_id(self, id: UUID) -> {{ entity.name }} | None:
+        return self._store.get(id)
+
+    async def list(self, skip: int = 0, limit: int = 100) -> list[{{ entity.name }}]:
+        items = list(self._store.values())
+        return items[skip : skip + limit]
+
+    async def create(self, data: dict) -> {{ entity.name }}:
+        entity = {{ entity.name }}(id=uuid.uuid4(), **data)
+        self._store[entity.id] = entity
+        return entity
+
+    async def update(self, id: UUID, data: dict) -> {{ entity.name }}:
+        entity = self._store.get(id)
+        if not entity:
+            raise NotFoundError("{{ entity.name }} not found")
+        for key, value in data.items():
+            setattr(entity, key, value)
+        return entity
+
+    async def delete(self, id: UUID) -> None:
+        if id not in self._store:
+            raise NotFoundError("{{ entity.name }} not found")
+        del self._store[id]
+
+    async def count(self) -> int:
+        return len(self._store)

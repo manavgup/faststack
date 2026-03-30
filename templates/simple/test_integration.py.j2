@@ -1,0 +1,33 @@
+"""Integration tests for {{ entity.name }} API endpoints."""
+
+# TODO: Wire up the `client` fixture with FastAPI TestClient + DI overrides (Phase 6).
+
+import uuid
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+
+async def test_create_{{ entity.name | lower }}(client):
+    response = await client.post(
+        "/api/{{ entity.table_name }}",
+        json={
+{%- for field in entity.fields if field.required and not field.references %}
+            "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}"10.00"{% else %}"test_{{ field.name }}"{% endif %},
+{%- endfor %}
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+
+
+async def test_list_{{ entity.table_name }}(client):
+    response = await client.get("/api/{{ entity.table_name }}")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+async def test_get_{{ entity.name | lower }}_not_found(client):
+    response = await client.get(f"/api/{{ entity.table_name }}/{uuid.uuid4()}")
+    assert response.status_code == 404
