@@ -1,0 +1,16 @@
+"""{{ project_name }} — FastAPI application."""
+
+from fastapi import FastAPI
+from faststack_core.settings.config import FastStackConfig
+from faststack_core.setup import setup_app
+
+app = FastAPI(title="{{ project_name }}")
+
+setup_app(app, FastStackConfig(
+    app_version="0.1.0",
+))
+
+{% for entity in entities %}
+from app.api.routes.{{ entity.name | lower }} import router as {{ entity.name | lower }}_router
+app.include_router({{ entity.name | lower }}_router, prefix="/api")
+{% endfor %}
