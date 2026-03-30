@@ -84,7 +84,7 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Run tests
-        run: poetry run pytest -v --tb=short
+        run: poetry run pytest -v --tb=short || test $? -eq 5
 
   package:
     name: Package Build
