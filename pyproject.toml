@@ -2,7 +2,7 @@
 name = "faststack"
 version = "0.1.0"
 description = "Hybrid FastAPI framework — runtime core + CLI generator"
-authors = ["Manav Gup <manavgup@gmail.com>"]
+authors = ["Manav Gupta <manavgup@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [
@@ -62,7 +62,11 @@ select = [
 ignore = [
     "E501",  # line too long (handled by black)
     "B008",  # do not perform function calls in argument defaults
+    "UP046", # Generic[T] subclass — we use this pattern for Protocol/SQLAlchemy compat
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["C901"]  # allow complex test helper functions
 
 [tool.black]
 line-length = 100
