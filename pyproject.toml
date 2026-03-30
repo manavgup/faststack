@@ -91,6 +91,8 @@ ignore = [
 "tests/*" = ["C901"]  # allow complex test helper functions
 "cli/model_introspector.py" = ["C901"]  # AST parsing is inherently complex
 "cli/yaml_parser.py" = ["C901"]  # YAML parsing with relationship resolution
+"cli/cmd_generate.py" = ["C901"]  # regeneration logic with PRESERVED/REGENERATABLE handling
+"cli/cmd_add_entity.py" = ["C901"]  # entity generation with multiple input modes
 
 [tool.black]
 line-length = 100
