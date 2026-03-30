@@ -1,0 +1,241 @@
+{#- --------------------------------------------------------------------------
+    model.py.j2 — Generate a SQLAlchemy model from an EntityDefinition.
+
+    Template variable: entity (EntityDefinition)
+   -------------------------------------------------------------------------- -#}
+{%- set ns = namespace(
+    need_enum=false,
+    need_uuid=false,
+    need_datetime=false,
+    need_date=false,
+    need_relationship=false
+) -%}
+{#- Scan fields for import requirements -#}
+{%- for field in entity.fields -%}
+{%-   if field.type == "enum" %}{% set ns.need_enum = true %}{% endif -%}
+{%-   if field.type == "uuid" or field.references %}{% set ns.need_uuid = true %}{% endif -%}
+{%-   if field.type == "datetime" %}{% set ns.need_datetime = true %}{% endif -%}
+{%-   if field.type == "date" %}{% set ns.need_date = true %}{% endif -%}
+{%-   if field.references %}{% set ns.need_relationship = true %}{% endif -%}
+{%- endfor -%}
+{%- if entity.relationships %}{% set ns.need_relationship = true %}{% endif -%}
+{#- Collect SA type names -#}
+{%- set _sa_map = {
+    "string": "String", "text": "Text", "integer": "Integer",
+    "float": "Float", "boolean": "Boolean", "datetime": "DateTime",
+    "date": "Date", "decimal": "Numeric", "json": "JSON",
+    "jsonb": "JSONB", "array": "ARRAY", "enum": "Enum"
+} -%}
+{%- set _seen = namespace(types=[]) -%}
+{%- for field in entity.fields -%}
+{%-   if field.references -%}
+{%-     if "ForeignKey" not in _seen.types %}{% set _seen.types = _seen.types + ["ForeignKey"] %}{% endif -%}
+{%-   elif field.type == "uuid" -%}
+{%-     if "UUID" not in _seen.types %}{% set _seen.types = _seen.types + ["UUID"] %}{% endif -%}
+{%-   elif field.type in _sa_map -%}
+{%-     set _sa_name = _sa_map[field.type] -%}
+{%-     if _sa_name not in _seen.types %}{% set _seen.types = _seen.types + [_sa_name] %}{% endif -%}
+{%-   endif -%}
+{%- endfor -%}
+{%- set sa_imports = _seen.types | sort -%}
+{#- Collect TYPE_CHECKING targets -#}
+{%- set _tc = namespace(targets=[]) -%}
+{%- for rel in entity.relationships -%}
+{%-   if rel.type != "self_referential" and rel.target_entity != entity.name -%}
+{%-     if rel.target_entity not in _tc.targets %}{% set _tc.targets = _tc.targets + [rel.target_entity] %}{% endif -%}
+{%-   endif -%}
+{%- endfor -%}
+{#- ========== Begin output ========== -#}
+"""{{ entity.name }} model."""
+{%- if _tc.targets %}
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+{%- endif %}
+{%- if ns.need_enum %}
+
+import enum
+{%- endif %}
+{%- if ns.need_uuid %}
+
+import uuid
+{%- endif %}
+{%- if ns.need_datetime and ns.need_date %}
+
+from datetime import date, datetime
+{%- elif ns.need_datetime %}
+
+from datetime import datetime
+{%- elif ns.need_date %}
+
+from datetime import date
+{%- endif %}
+{%- if sa_imports %}
+
+from sqlalchemy import {{ sa_imports | join(", ") }}
+{%- endif %}
+
+from sqlalchemy.orm import Mapped, mapped_column{{ ", relationship" if ns.need_relationship else "" }}
+
+from faststack_core.base.entity import {{ entity.base }}
+{%- if _tc.targets %}
+
+if TYPE_CHECKING:
+{%- for target in _tc.targets | sort %}
+    from app.models.{{ target | lower }} import {{ target }}
+{%- endfor %}
+{%- endif %}
+{#- ---------- Enum classes ---------- -#}
+{%- for field in entity.fields %}
+{%- if field.type == "enum" and field.enum_values %}
+
+
+class {{ entity.name }}{{ field.name | capitalize }}(str, enum.Enum):
+{%- for value in field.enum_values %}
+    {{ value | upper }} = "{{ value }}"
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
+
+
+class {{ entity.name }}({{ entity.base }}):
+    """{{ entity.name }} domain model."""
+
+    __tablename__ = "{{ entity.table_name }}"
+{%- for field in entity.fields %}
+{#- ---- Foreign key columns ---- -#}
+{%- if field.references %}
+{%- if field.references == "self" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(ForeignKey("{{ entity.table_name }}.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("{{ entity.table_name }}.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }}, default=None)
+{%- endif %}
+{%- else %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(ForeignKey("{{ field.references | lower }}s.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("{{ field.references | lower }}s.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }}, default=None)
+{%- endif %}
+{%- endif %}
+{#- ---- String ---- -#}
+{%- elif field.type == "string" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[str] = mapped_column(String(255){{ ", unique=True" if field.unique else "" }}{{ ', default="' + field.default + '"' if field.default else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[str | None] = mapped_column(String(255){{ ", unique=True" if field.unique else "" }}{{ ', default="' + field.default + '"' if field.default else ", default=None" }})
+{%- endif %}
+{#- ---- Text ---- -#}
+{%- elif field.type == "text" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[str] = mapped_column(Text{{ ", unique=True" if field.unique else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[str | None] = mapped_column(Text{{ ", unique=True" if field.unique else "" }}, default=None)
+{%- endif %}
+{#- ---- Integer ---- -#}
+{%- elif field.type == "integer" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[int] = mapped_column(Integer{{ ", unique=True" if field.unique else "" }}{{ ", default=" + field.default if field.default else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[int | None] = mapped_column(Integer{{ ", unique=True" if field.unique else "" }}{{ ", default=" + field.default if field.default else ", default=None" }})
+{%- endif %}
+{#- ---- Float ---- -#}
+{%- elif field.type == "float" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[float] = mapped_column(Float{{ ", unique=True" if field.unique else "" }}{{ ", default=" + field.default if field.default else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[float | None] = mapped_column(Float{{ ", unique=True" if field.unique else "" }}{{ ", default=" + field.default if field.default else ", default=None" }})
+{%- endif %}
+{#- ---- Boolean ---- -#}
+{%- elif field.type == "boolean" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[bool] = mapped_column(Boolean{{ ", default=" + (field.default | string | capitalize) if field.default is not none else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[bool] = mapped_column(Boolean, default={{ field.default | string | capitalize if field.default is not none else "False" }})
+{%- endif %}
+{#- ---- DateTime ---- -#}
+{%- elif field.type == "datetime" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[datetime] = mapped_column(DateTime)
+{%- else %}
+    {{ field.name }}: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+{%- endif %}
+{#- ---- Date ---- -#}
+{%- elif field.type == "date" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[date] = mapped_column(Date)
+{%- else %}
+    {{ field.name }}: Mapped[date | None] = mapped_column(Date, default=None)
+{%- endif %}
+{#- ---- UUID (non-FK) ---- -#}
+{%- elif field.type == "uuid" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True){{ ", unique=True" if field.unique else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True){{ ", unique=True" if field.unique else "" }}, default=None)
+{%- endif %}
+{#- ---- Decimal ---- -#}
+{%- elif field.type == "decimal" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[float] = mapped_column(Numeric(10, 2){{ ", unique=True" if field.unique else "" }}{{ ", default=" + field.default if field.default else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[float | None] = mapped_column(Numeric(10, 2){{ ", unique=True" if field.unique else "" }}{{ ", default=" + field.default if field.default else ", default=None" }})
+{%- endif %}
+{#- ---- JSON ---- -#}
+{%- elif field.type == "json" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[dict] = mapped_column(JSON)
+{%- else %}
+    {{ field.name }}: Mapped[dict | None] = mapped_column(JSON, default=None)
+{%- endif %}
+{#- ---- JSONB ---- -#}
+{%- elif field.type == "jsonb" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[dict] = mapped_column(JSONB)
+{%- else %}
+    {{ field.name }}: Mapped[dict | None] = mapped_column(JSONB, default=None)
+{%- endif %}
+{#- ---- Array ---- -#}
+{%- elif field.type == "array" %}
+{%- set _inner_sa = {"string": "String", "integer": "Integer", "float": "Float", "text": "Text", "boolean": "Boolean"} %}
+{%- set _inner = _inner_sa.get(field.items, "String") if field.items else "String" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[list] = mapped_column(ARRAY({{ _inner }}))
+{%- else %}
+    {{ field.name }}: Mapped[list | None] = mapped_column(ARRAY({{ _inner }}), default=None)
+{%- endif %}
+{#- ---- Enum ---- -#}
+{%- elif field.type == "enum" %}
+{%- set enum_class = entity.name + field.name | capitalize %}
+{%- set _clean_default = field.default | replace('"', '') | replace("'", '') if field.default else "" %}
+{%- if field.required %}
+    {{ field.name }}: Mapped[{{ enum_class }}] = mapped_column({{ "default=" + enum_class + "." + _clean_default | upper if _clean_default else "" }})
+{%- else %}
+    {{ field.name }}: Mapped[{{ enum_class }} | None] = mapped_column({{ "default=" + enum_class + "." + _clean_default | upper if _clean_default else "default=None" }})
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+{#- ---------- Relationships ---------- -#}
+{%- for rel in entity.relationships %}
+{%- if rel.type == "many_to_one" %}
+
+    # Relationship to {{ rel.target_entity }}
+    {{ rel.target_entity | lower }}: Mapped["{{ rel.target_entity }}"] = relationship(back_populates="{{ rel.back_populates }}")
+{%- elif rel.type == "self_referential" %}
+
+    # Self-referential relationship
+    parent: Mapped["{{ entity.name }} | None"] = relationship(
+        back_populates="{{ rel.back_populates }}",
+        remote_side="[{{ entity.name }}.id]",
+    )
+    {{ rel.back_populates }}: Mapped[list["{{ entity.name }}"]] = relationship(back_populates="parent")
+{%- elif rel.type == "many_to_many" %}
+
+    # Many-to-many relationship to {{ rel.target_entity }}
+    {{ rel.field_name }}: Mapped[list["{{ rel.target_entity }}"]] = relationship(
+        back_populates="{{ rel.back_populates }}",
+        secondary="{{ entity.name | lower }}_{{ rel.target_entity | lower }}",
+    )
+{%- endif %}
+{%- endfor %}

@@ -1,0 +1,11 @@
+"""{{ entity.name }} test factories."""
+
+from polyfactory.factories.pydantic_factory import ModelFactory
+
+from app.schemas.{{ entity.name | lower }} import {{ entity.name }}Create
+
+
+class {{ entity.name }}CreateFactory(ModelFactory):
+    """Factory for generating {{ entity.name }}Create test data."""
+
+    __model__ = {{ entity.name }}Create

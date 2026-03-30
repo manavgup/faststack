@@ -1,0 +1,148 @@
+{#- --------------------------------------------------------------------------
+    schema.py.j2 — Generate Pydantic v2 schemas from an EntityDefinition.
+
+    Template variable: entity (EntityDefinition)
+
+    Generates: Create, Update, Response, and DetailResponse schemas.
+   -------------------------------------------------------------------------- -#}
+{%- set ns = namespace(
+    need_uuid=false,
+    need_datetime=false,
+    need_date=false,
+    need_decimal=false,
+    has_enum_fields=false
+) -%}
+{%- for field in entity.fields -%}
+{%-   if field.type == "uuid" or field.references %}{% set ns.need_uuid = true %}{% endif -%}
+{%-   if field.type == "datetime" %}{% set ns.need_datetime = true %}{% endif -%}
+{%-   if field.type == "date" %}{% set ns.need_date = true %}{% endif -%}
+{%-   if field.type == "decimal" %}{% set ns.need_decimal = true %}{% endif -%}
+{%-   if field.type == "enum" and field.enum_values %}{% set ns.has_enum_fields = true %}{% endif -%}
+{%- endfor -%}
+{#- Response schema always needs UUID; audit bases need datetime -#}
+{%- set needs_datetime_import = ns.need_datetime or entity.base in ("AuditedEntity", "FullAuditedEntity", "SoftDeleteEntity") -%}
+{#- Map YAML types to Pydantic annotation strings -#}
+{%- set _pydantic_map = {
+    "string": "str", "text": "str", "integer": "int", "float": "float",
+    "boolean": "bool", "datetime": "datetime", "date": "date",
+    "uuid": "UUID", "decimal": "Decimal", "json": "dict", "jsonb": "dict"
+} -%}
+{%- set _array_inner_map = {
+    "string": "str", "text": "str", "integer": "int", "float": "float",
+    "boolean": "bool", "uuid": "UUID", "decimal": "Decimal"
+} -%}
+{#- Macro: Pydantic type for a field -#}
+{%- macro pydantic_type(field) -%}
+{%-   if field.references -%}
+UUID
+{%-   elif field.type == "enum" and field.enum_values -%}
+{{ entity.name }}{{ field.name | capitalize }}
+{%-   elif field.type == "array" -%}
+list[{{ _array_inner_map.get(field.items, "str") if field.items else "str" }}]
+{%-   elif field.type in _pydantic_map -%}
+{{ _pydantic_map[field.type] }}
+{%-   else -%}
+str
+{%-   endif -%}
+{%- endmacro -%}
+{#- ========== Begin output ========== -#}
+"""{{ entity.name }} schemas."""
+
+from __future__ import annotations
+{%- if needs_datetime_import and ns.need_date %}
+
+from datetime import date, datetime
+{%- elif needs_datetime_import %}
+
+from datetime import datetime
+{%- elif ns.need_date %}
+
+from datetime import date
+{%- endif %}
+{%- if ns.need_decimal %}
+
+from decimal import Decimal
+{%- endif %}
+
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+{%- for field in entity.fields %}
+{%- if field.type == "enum" and field.enum_values %}
+
+from app.models.{{ entity.name | lower }} import {{ entity.name }}{{ field.name | capitalize }}
+{%- endif %}
+{%- endfor %}
+
+
+class {{ entity.name }}Create(BaseModel):
+    """Schema for creating a new {{ entity.name }}."""
+{% for field in entity.fields %}
+{%- if field.required %}
+    {{ field.name }}: {{ pydantic_type(field) }}
+{%- elif field.default is not none %}
+{%- if field.type == "boolean" %}
+    {{ field.name }}: {{ pydantic_type(field) }} = {{ field.default | string | capitalize }}
+{%- elif field.type == "enum" and field.default %}
+{%- set _clean_default = field.default | replace('"', '') | replace("'", '') %}
+    {{ field.name }}: {{ pydantic_type(field) }} = {{ entity.name }}{{ field.name | capitalize }}.{{ _clean_default | upper }}
+{%- elif field.type in ("integer", "float", "decimal") %}
+    {{ field.name }}: {{ pydantic_type(field) }} = {{ field.default }}
+{%- else %}
+    {{ field.name }}: {{ pydantic_type(field) }} = "{{ field.default }}"
+{%- endif %}
+{%- else %}
+    {{ field.name }}: {{ pydantic_type(field) }} | None = None
+{%- endif %}
+{%- endfor %}
+
+
+class {{ entity.name }}Update(BaseModel):
+    """Schema for updating a {{ entity.name }} (PATCH semantics)."""
+{% for field in entity.fields %}
+    {{ field.name }}: {{ pydantic_type(field) }} | None = None
+{%- endfor %}
+
+
+class {{ entity.name }}Response(BaseModel):
+    """Schema for {{ entity.name }} API responses."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+{%- for field in entity.fields %}
+{%- if field.required %}
+    {{ field.name }}: {{ pydantic_type(field) }}
+{%- else %}
+    {{ field.name }}: {{ pydantic_type(field) }} | None = None
+{%- endif %}
+{%- endfor %}
+{%- if entity.base in ("AuditedEntity", "FullAuditedEntity") %}
+    created_at: datetime
+    updated_at: datetime
+    created_by: str | None = None
+    updated_by: str | None = None
+{%- endif %}
+{%- if entity.base in ("SoftDeleteEntity", "FullAuditedEntity") %}
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
+    deleted_by: str | None = None
+{%- endif %}
+
+
+class {{ entity.name }}DetailResponse({{ entity.name }}Response):
+    """Schema for {{ entity.name }} API responses with nested relationships."""
+{%- if entity.relationships %}
+{%- for rel in entity.relationships %}
+{%- if rel.type == "many_to_one" %}
+    {{ rel.target_entity | lower }}: {{ rel.target_entity }}Response | None = None
+{%- elif rel.type == "many_to_many" %}
+    {{ rel.field_name }}: list[{{ rel.target_entity }}Response] = []
+{%- elif rel.type == "self_referential" %}
+    {{ rel.back_populates }}: list[{{ entity.name }}Response] = []
+{%- endif %}
+{%- endfor %}
+{%- else %}
+
+    pass
+{%- endif %}

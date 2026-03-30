@@ -1,0 +1,29 @@
+"""{{ entity.name }} service."""
+
+from faststack_core.base.repository import Repository
+from faststack_core.base.service import CrudService
+
+from app.models.{{ entity.name | lower }} import {{ entity.name }}
+
+
+class {{ entity.name }}Service(CrudService[{{ entity.name }}]):
+    """{{ entity.name }} service with business logic.
+
+    Override lifecycle hooks below to add custom behavior:
+    - before_create / after_create
+    - before_update / after_update
+    - before_delete / after_delete
+    """
+
+    def __init__(self, repository: Repository[{{ entity.name }}]) -> None:
+        super().__init__(repository)
+{%- set unique_fields = entity.fields | selectattr("unique") | list %}
+{%- if unique_fields %}
+
+    async def before_create(self, data: dict) -> dict:
+        """Check for duplicate values before creating."""
+{%- for field in unique_fields %}
+        # TODO: Implement uniqueness check for {{ field.name }}
+{%- endfor %}
+        return data
+{%- endif %}
