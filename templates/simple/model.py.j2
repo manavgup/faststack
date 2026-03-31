@@ -24,7 +24,7 @@
     "string": "String", "text": "Text", "integer": "Integer",
     "float": "Float", "boolean": "Boolean", "datetime": "DateTime",
     "date": "Date", "decimal": "Numeric", "json": "JSON",
-    "jsonb": "JSONB", "array": "ARRAY", "enum": "Enum"
+    "jsonb": "JSON", "array": "ARRAY", "enum": "Enum"
 } -%}
 {%- set _seen = namespace(types=[]) -%}
 {%- for field in entity.fields -%}
@@ -114,9 +114,9 @@ class {{ entity.name }}({{ entity.base }}):
 {%- endif %}
 {%- else %}
 {%- if field.required %}
-    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(ForeignKey("{{ field.references | lower }}s.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }})
+    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(ForeignKey("{{ field.references | snake_case | pluralize }}.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }})
 {%- else %}
-    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("{{ field.references | lower }}s.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }}, default=None)
+    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("{{ field.references | snake_case | pluralize }}.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }}, default=None)
 {%- endif %}
 {%- endif %}
 {#- ---- String ---- -#}
@@ -189,12 +189,12 @@ class {{ entity.name }}({{ entity.base }}):
 {%- else %}
     {{ field.name }}: Mapped[dict | None] = mapped_column(JSON, default=None)
 {%- endif %}
-{#- ---- JSONB ---- -#}
+{#- ---- JSONB (uses JSON for cross-backend compat; switch to JSONB for PostgreSQL) ---- -#}
 {%- elif field.type == "jsonb" %}
 {%- if field.required %}
-    {{ field.name }}: Mapped[dict] = mapped_column(JSONB)
+    {{ field.name }}: Mapped[dict] = mapped_column(JSON)
 {%- else %}
-    {{ field.name }}: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    {{ field.name }}: Mapped[dict | None] = mapped_column(JSON, default=None)
 {%- endif %}
 {#- ---- Array ---- -#}
 {%- elif field.type == "array" %}
@@ -235,7 +235,7 @@ class {{ entity.name }}({{ entity.base }}):
     # Many-to-many relationship to {{ rel.target_entity }}
     {{ rel.field_name }}: Mapped[list["{{ rel.target_entity }}"]] = relationship(
         back_populates="{{ rel.back_populates }}",
-        secondary="{{ entity.name | lower }}_{{ rel.target_entity | lower }}",
+        secondary="{{ entity.name | snake_case }}_{{ rel.target_entity | lower }}",
     )
 {%- endif %}
 {%- endfor %}

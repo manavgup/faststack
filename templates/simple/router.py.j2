@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.schemas.{{ entity.name | lower }} import (
+from app.schemas.{{ entity.name | snake_case }} import (
     {{ entity.name }}Create,
     {{ entity.name }}DetailResponse,
     {{ entity.name }}Response,
@@ -34,24 +34,24 @@ async def list_{{ entity.table_name }}(
 
 
 @router.get("/{id}", response_model={{ entity.name }}DetailResponse)
-async def get_{{ entity.name | lower }}(id: UUID):
+async def get_{{ entity.name | snake_case }}(id: UUID):
     """Get a single {{ entity.name }} by ID."""
     ...
 
 
 @router.post("/", response_model={{ entity.name }}Response, status_code=201)
-async def create_{{ entity.name | lower }}(data: {{ entity.name }}Create):
+async def create_{{ entity.name | snake_case }}(data: {{ entity.name }}Create):
     """Create a new {{ entity.name }}."""
     ...
 
 
 @router.put("/{id}", response_model={{ entity.name }}Response)
-async def update_{{ entity.name | lower }}(id: UUID, data: {{ entity.name }}Update):
+async def update_{{ entity.name | snake_case }}(id: UUID, data: {{ entity.name }}Update):
     """Update an existing {{ entity.name }}."""
     ...
 
 
 @router.delete("/{id}", status_code=204)
-async def delete_{{ entity.name | lower }}(id: UUID):
+async def delete_{{ entity.name | snake_case }}(id: UUID):
     """Delete a {{ entity.name }}."""
     ...

@@ -7,7 +7,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.{{ entity.name | lower }} import {{ entity.name }}
+from app.models.{{ entity.name | snake_case }} import {{ entity.name }}
 from faststack_core.base.repository import SqlAlchemyRepository
 
 
@@ -30,7 +30,7 @@ class {{ entity.name }}Repository(SqlAlchemyRepository[{{ entity.name }}]):
 {%- if entity.searchable %}
 
     async def search(self, query: str, skip: int = 0, limit: int = 100) -> list[{{ entity.name }}]:
-        """Search {{ entity.name | lower }} records by {{ entity.searchable | join(", ") }}."""
+        """Search {{ entity.name | snake_case }} records by {{ entity.searchable | join(", ") }}."""
         from sqlalchemy import or_, select
 
         stmt = (

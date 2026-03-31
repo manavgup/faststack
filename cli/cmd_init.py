@@ -1,11 +1,18 @@
 """faststack init — scaffold a new FastStack project."""
 
+import os
 from pathlib import Path
 
 import click
 from jinja2 import Environment, FileSystemLoader
 
 from cli import cli_group
+from cli.cmd_add_entity import (
+    _camel_to_snake,
+    _generate_entity_files,
+    _pluralize,
+    _update_project_config,
+)
 from cli.yaml_parser import parse_entities_yaml
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "project"
@@ -66,6 +73,8 @@ def init_project(project_name: str, entities: str | None = None) -> None:
 
     # Render templates
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), keep_trailing_newline=True)
+    env.filters["snake_case"] = _camel_to_snake
+    env.filters["pluralize"] = _pluralize
 
     template_context = {
         "project_name": project_name,
@@ -100,7 +109,23 @@ def init_project(project_name: str, entities: str | None = None) -> None:
     )
     (project_dir / ".env").write_text(env_content)
 
-    click.echo(f"Created project '{project_name}' at {project_dir}")
+    # Generate entity files if YAML was provided
+    if entity_defs:
+        original_cwd = os.getcwd()
+        os.chdir(project_dir)
+        try:
+            config_path = Path(".project-config.yaml")
+            for entity_def in entity_defs:
+                _generate_entity_files(entity_def, update=False)
+                model_path = Path(f"app/models/{_camel_to_snake(entity_def.name)}.py")
+                _update_project_config(config_path, entity_def, model_path)
+                click.echo(f"  Generated entity: {entity_def.name}")
+        finally:
+            os.chdir(original_cwd)
+
+    click.echo(f"\nCreated project '{project_name}' at {project_dir}")
+    if entity_defs:
+        click.echo(f"  {len(entity_defs)} entities generated")
     click.echo()
     click.echo("Next steps:")
     click.echo(f"  cd {project_name}")

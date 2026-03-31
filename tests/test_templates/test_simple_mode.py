@@ -115,10 +115,15 @@ TEMPLATES = [
 
 @pytest.fixture
 def jinja_env():
-    return Environment(
+    from cli.cmd_add_entity import _camel_to_snake, _pluralize
+
+    env = Environment(
         loader=FileSystemLoader(str(TEMPLATE_DIR)),
         keep_trailing_newline=True,
     )
+    env.filters["snake_case"] = _camel_to_snake
+    env.filters["pluralize"] = _pluralize
+    return env
 
 
 def _render(jinja_env, template_name: str, entity: EntityDefinition) -> str:

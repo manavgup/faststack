@@ -16,7 +16,11 @@ cli_group = cli
 
 def _register_commands() -> None:
     """Import subcommands to register them with the CLI group."""
+    import cli.cmd_add_entity  # noqa: F401
+    import cli.cmd_generate  # noqa: F401
     import cli.cmd_init  # noqa: F401
+    import cli.cmd_list  # noqa: F401
+    import cli.cmd_migrate  # noqa: F401
 
 
 _register_commands()
