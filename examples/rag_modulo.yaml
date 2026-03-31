@@ -1,0 +1,276 @@
+# entities.yaml — Full rag_modulo entity set (20 entities)
+#
+# Complete reproduction of the rag_modulo project's data model
+# for testing FastStack code generation end-to-end.
+#
+# Note: Junction tables (UserTeam, UserCollection) are defined as
+# regular entities with composite FKs rather than many_to_many
+# shorthand, matching the rag_modulo pattern of association tables
+# with extra fields (joined_at).
+
+entities:
+  User:
+    base: AuditedEntity
+    fields:
+      ibm_id: {type: string, unique: true, required: true}
+      email: {type: string, required: true}
+      name: {type: string, required: true}
+      role: {type: enum, values: [user, admin], default: '"user"'}
+    searchable: [email, name, ibm_id]
+
+  Team:
+    base: AuditedEntity
+    fields:
+      name: {type: string, required: true}
+      description: {type: text}
+    searchable: [name]
+
+  UserTeam:
+    base: Entity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      team_id: {type: uuid, references: Team, on_delete: cascade, required: true}
+      joined_at: {type: datetime}
+
+  Collection:
+    base: AuditedEntity
+    fields:
+      name: {type: string, required: true}
+      vector_db_name: {type: string, required: true}
+      status: {type: enum, values: [created, processing, ready, error], default: '"created"'}
+      is_private: {type: boolean}
+    searchable: [name]
+
+  UserCollection:
+    base: Entity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      collection_id: {type: uuid, references: Collection, on_delete: cascade, required: true}
+      joined_at: {type: datetime}
+
+  File:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      collection_id: {type: uuid, references: Collection}
+      filename: {type: string, required: true}
+      file_path: {type: string, required: true}
+      file_type: {type: string, required: true}
+      document_id: {type: string}
+      file_metadata: {type: jsonb}
+    searchable: [filename, file_path]
+
+  SuggestedQuestion:
+    base: Entity
+    fields:
+      collection_id: {type: uuid, references: Collection, on_delete: cascade, required: true}
+      question: {type: string, required: true}
+      question_metadata: {type: jsonb}
+      created_at: {type: datetime}
+    searchable: [question]
+
+  ConversationSession:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      collection_id: {type: uuid, references: Collection, on_delete: cascade, required: true}
+      session_name: {type: string, required: true}
+      status: {type: enum, values: [active, completed, archived], default: '"active"'}
+      context_window_size: {type: integer}
+      max_messages: {type: integer}
+      is_archived: {type: boolean}
+      is_pinned: {type: boolean}
+      session_metadata: {type: jsonb}
+    searchable: [session_name]
+
+  ConversationMessage:
+    base: Entity
+    fields:
+      session_id: {type: uuid, references: ConversationSession, on_delete: cascade, required: true}
+      content: {type: text, required: true}
+      role: {type: enum, values: [user, assistant, system], required: true}
+      message_type: {type: string}
+      message_metadata: {type: jsonb}
+      token_count: {type: integer}
+      execution_time: {type: float}
+      created_at: {type: datetime}
+
+  ConversationSummary:
+    base: Entity
+    fields:
+      session_id: {type: uuid, references: ConversationSession, on_delete: cascade, required: true}
+      summary_text: {type: text, required: true}
+      summarized_message_count: {type: integer}
+      tokens_saved: {type: integer}
+      key_topics: {type: jsonb}
+      important_decisions: {type: jsonb}
+      unresolved_questions: {type: jsonb}
+      summary_strategy: {type: enum, values: [recent_plus_summary, full_context, sliding_window], default: '"recent_plus_summary"'}
+      summary_metadata: {type: jsonb}
+      created_at: {type: datetime}
+
+  LlmProvider:
+    base: AuditedEntity
+    fields:
+      name: {type: string, unique: true, required: true}
+      base_url: {type: string, required: true}
+      api_key: {type: string, required: true}
+      org_id: {type: string}
+      project_id: {type: string}
+      is_active: {type: boolean}
+      is_default: {type: boolean}
+    searchable: [name]
+
+  LlmModel:
+    base: AuditedEntity
+    fields:
+      provider_id: {type: uuid, references: LlmProvider, on_delete: cascade, required: true}
+      model_id: {type: string, required: true}
+      default_model_id: {type: string}
+      model_type: {type: enum, values: [chat, embedding, reranker], required: true}
+      timeout: {type: integer}
+      retry_attempts: {type: integer}
+      batch_size: {type: integer}
+      concurrency_limit: {type: integer}
+      rate_limit: {type: integer}
+      is_active: {type: boolean}
+      is_default: {type: boolean}
+      stream: {type: boolean}
+    searchable: [model_id]
+
+  LlmParameters:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      name: {type: string, required: true}
+      description: {type: text}
+      max_new_tokens: {type: integer}
+      temperature: {type: float}
+      top_k: {type: integer}
+      top_p: {type: float}
+      repetition_penalty: {type: float}
+      is_default: {type: boolean}
+    searchable: [name]
+
+  PromptTemplate:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      name: {type: string, required: true}
+      template_type: {type: enum, values: [qa, summarization, classification, extraction, custom], required: true}
+      system_prompt: {type: text}
+      template_format: {type: text}
+      input_variables: {type: jsonb, required: true}
+      example_inputs: {type: jsonb}
+      context_strategy: {type: jsonb}
+      stop_sequences: {type: jsonb}
+      validation_schema: {type: jsonb}
+      max_context_length: {type: integer}
+      is_default: {type: boolean}
+    searchable: [name]
+
+  RuntimeConfig:
+    base: AuditedEntity
+    fields:
+      scope: {type: enum, values: [global, user, collection], required: true}
+      category: {type: enum, values: [system, override, experiment, performance], required: true}
+      config_key: {type: string, required: true}
+      config_value: {type: jsonb, required: true}
+      user_id: {type: uuid, references: User}
+      collection_id: {type: uuid, references: Collection}
+      is_active: {type: boolean}
+      description: {type: text}
+      created_by: {type: string}
+    searchable: [config_key]
+
+  Agent:
+    base: AuditedEntity
+    fields:
+      spiffe_id: {type: string, unique: true, required: true}
+      agent_type: {type: string, required: true}
+      name: {type: string, required: true}
+      owner_user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      team_id: {type: uuid, references: Team}
+      capabilities: {type: jsonb}
+      agent_metadata: {type: jsonb}
+      description: {type: text}
+      status: {type: enum, values: [active, suspended, revoked, pending], default: '"pending"'}
+      last_seen_at: {type: datetime}
+    searchable: [name, agent_type, spiffe_id]
+
+  Podcast:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      collection_id: {type: uuid, references: Collection, on_delete: cascade, required: true}
+      title: {type: string}
+      duration: {type: enum, values: [short, medium, long], required: true}
+      status: {type: enum, values: [pending, generating, ready, error], default: '"pending"'}
+      progress_percentage: {type: integer}
+      active_step: {type: string}
+      step_details: {type: jsonb}
+      estimated_time_remaining: {type: integer}
+      host_voice: {type: string}
+      expert_voice: {type: string}
+      voice_settings: {type: jsonb}
+      audio_format: {type: string}
+      audio_url: {type: string}
+      transcript: {type: text}
+      chapter_markers: {type: jsonb}
+      error_message: {type: string}
+      completed_at: {type: datetime}
+    searchable: [title]
+
+  Voice:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      name: {type: string, required: true}
+      description: {type: text}
+      gender: {type: enum, values: [male, female, neutral], required: true}
+      status: {type: enum, values: [uploading, processing, ready, failed], default: '"uploading"'}
+      provider_voice_id: {type: string}
+      provider_name: {type: string}
+      sample_file_url: {type: string, required: true}
+      sample_file_size: {type: integer}
+      quality_score: {type: integer}
+      error_message: {type: string}
+      times_used: {type: integer}
+      processed_at: {type: datetime}
+    searchable: [name]
+
+  TokenWarning:
+    base: Entity
+    fields:
+      user_id: {type: uuid, references: User}
+      session_id: {type: string}
+      current_tokens: {type: integer, required: true}
+      limit_tokens: {type: integer, required: true}
+      percentage_used: {type: float, required: true}
+      warning_type: {type: enum, values: [approaching, exceeded, critical], required: true}
+      severity: {type: enum, values: [low, medium, high, critical], required: true}
+      message: {type: string, required: true}
+      suggested_action: {type: string}
+      model_name: {type: string}
+      service_type: {type: string}
+      created_at: {type: datetime}
+      acknowledged_at: {type: datetime}
+    searchable: [warning_type, severity]
+
+  PipelineConfig:
+    base: AuditedEntity
+    fields:
+      user_id: {type: uuid, references: User, on_delete: cascade, required: true}
+      collection_id: {type: uuid, references: Collection}
+      provider_id: {type: uuid, references: LlmProvider}
+      name: {type: string, required: true}
+      chunking_strategy: {type: string}
+      embedding_model: {type: string}
+      retriever: {type: string}
+      context_strategy: {type: string}
+      enable_logging: {type: boolean}
+      max_context_length: {type: integer}
+      timeout: {type: float}
+      config_metadata: {type: jsonb}
+      is_default: {type: boolean}
+    searchable: [name]
