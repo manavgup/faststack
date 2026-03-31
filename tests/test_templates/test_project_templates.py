@@ -14,7 +14,12 @@ TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates" / "project"
 
 @pytest.fixture
 def jinja_env():
-    return Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), keep_trailing_newline=True)
+    from cli.cmd_add_entity import _camel_to_snake, _pluralize
+
+    env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), keep_trailing_newline=True)
+    env.filters["snake_case"] = _camel_to_snake
+    env.filters["pluralize"] = _pluralize
+    return env
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 from polyfactory.factories.pydantic_factory import ModelFactory
 
-from app.schemas.{{ entity.name | lower }} import {{ entity.name }}Create
+from app.schemas.{{ entity.name | snake_case }} import {{ entity.name }}Create
 
 
 class {{ entity.name }}CreateFactory(ModelFactory):

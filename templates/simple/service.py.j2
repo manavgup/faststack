@@ -3,7 +3,7 @@
 from faststack_core.base.repository import Repository
 from faststack_core.base.service import CrudService
 
-from app.models.{{ entity.name | lower }} import {{ entity.name }}
+from app.models.{{ entity.name | snake_case }} import {{ entity.name }}
 
 
 class {{ entity.name }}Service(CrudService[{{ entity.name }}]):

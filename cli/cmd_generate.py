@@ -8,6 +8,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from cli import cli_group
+from cli.cmd_add_entity import _camel_to_snake, _pluralize
 from cli.model_introspector import introspect_model
 
 SIMPLE_TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "simple"
@@ -51,7 +52,7 @@ def generate(entity_name: str | None, generate_all: bool, force: bool) -> None:
         raise click.ClickException("Provide entity name or --all")
 
     for name in names:
-        model_path = Path(f"app/models/{name.lower()}.py")
+        model_path = Path(f"app/models/{_camel_to_snake(name)}.py")
         if not model_path.exists():
             click.echo(f"Skipping {name}: model file not found at {model_path}")
             continue
@@ -64,9 +65,11 @@ def generate(entity_name: str | None, generate_all: bool, force: bool) -> None:
             loader=FileSystemLoader(str(SIMPLE_TEMPLATE_DIR)),
             keep_trailing_newline=True,
         )
+        env.filters["snake_case"] = _camel_to_snake
+        env.filters["pluralize"] = _pluralize
 
         for template_name, path_pattern in REGENERATABLE_FILES.items():
-            output_path = Path(path_pattern.format(name=name.lower()))
+            output_path = Path(path_pattern.format(name=_camel_to_snake(name)))
             template = env.get_template(template_name)
             content = template.render(entity=entity_def)
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -80,7 +83,7 @@ def generate(entity_name: str | None, generate_all: bool, force: bool) -> None:
             ):
                 continue
             for template_name, path_pattern in PRESERVED_FILES.items():
-                output_path = Path(path_pattern.format(name=name.lower()))
+                output_path = Path(path_pattern.format(name=_camel_to_snake(name)))
                 template = env.get_template(template_name)
                 content = template.render(entity=entity_def)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +91,7 @@ def generate(entity_name: str | None, generate_all: bool, force: bool) -> None:
                 click.echo(f"  Regenerated (PRESERVED) {output_path}")
         else:
             for path_pattern in PRESERVED_FILES.values():
-                output_path = Path(path_pattern.format(name=name.lower()))
+                output_path = Path(path_pattern.format(name=_camel_to_snake(name)))
                 if output_path.exists():
                     click.echo(f"  Skipping {output_path} (PRESERVED — contains user code)")
 
