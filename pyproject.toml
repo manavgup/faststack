@@ -73,6 +73,7 @@ ignore = [
 "cli/yaml_parser.py" = ["C901"]  # YAML parsing with relationship resolution
 "cli/cmd_generate.py" = ["C901"]  # regeneration logic with PRESERVED/REGENERATABLE handling
 "cli/cmd_add_entity.py" = ["C901"]  # entity generation with multiple input modes
+"examples/*" = ["F841", "E402", "F401", "C901", "B904"]  # smoke test scripts — relaxed lint
 
 [tool.black]
 line-length = 100

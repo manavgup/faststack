@@ -79,12 +79,14 @@ def _generate_entity_files(entity_def: EntityDefinition, update: bool) -> None:
         loader=FileSystemLoader(str(SIMPLE_TEMPLATE_DIR)),
         keep_trailing_newline=True,
     )
+    env.filters["snake_case"] = _camel_to_snake
+    env.filters["pluralize"] = _pluralize
 
-    name_lower = entity_def.name.lower()
+    name_snake = _camel_to_snake(entity_def.name)
 
     # Always write REGENERATABLE files
     for template_name, path_pattern in REGENERATABLE_TEMPLATES.items():
-        output_path = Path(path_pattern.format(name=name_lower))
+        output_path = Path(path_pattern.format(name=name_snake))
         output_path.parent.mkdir(parents=True, exist_ok=True)
         template = env.get_template(template_name)
         content = template.render(entity=entity_def)
@@ -92,7 +94,7 @@ def _generate_entity_files(entity_def: EntityDefinition, update: bool) -> None:
 
     # PRESERVED files: only write if file doesn't exist, or if --update
     for template_name, path_pattern in PRESERVED_TEMPLATES.items():
-        output_path = Path(path_pattern.format(name=name_lower))
+        output_path = Path(path_pattern.format(name=name_snake))
         if output_path.exists() and not update:
             continue
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -156,7 +158,7 @@ def add_entity(
         raise click.ClickException("Provide --fields or --from-yaml")
 
     # Check if entity already exists
-    model_path = Path(f"app/models/{entity_name.lower()}.py")
+    model_path = Path(f"app/models/{_camel_to_snake(entity_name)}.py")
     if model_path.exists() and not update:
         raise click.ClickException(
             f"Entity '{entity_name}' already exists. Use --update to merge fields."

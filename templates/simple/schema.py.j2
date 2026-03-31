@@ -70,7 +70,7 @@ from pydantic import BaseModel, ConfigDict
 {%- for field in entity.fields %}
 {%- if field.type == "enum" and field.enum_values %}
 
-from app.models.{{ entity.name | lower }} import {{ entity.name }}{{ field.name | capitalize }}
+from app.models.{{ entity.name | snake_case }} import {{ entity.name }}{{ field.name | capitalize }}
 {%- endif %}
 {%- endfor %}
 

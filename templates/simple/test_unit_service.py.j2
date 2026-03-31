@@ -6,9 +6,9 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.{{ entity.name | lower }} import {{ entity.name }}Service
+from app.services.{{ entity.name | snake_case }} import {{ entity.name }}Service
 from faststack_core.exceptions.domain import NotFoundError
-from tests.unit.fakes.{{ entity.name | lower }}_repository import Fake{{ entity.name }}Repository
+from tests.unit.fakes.{{ entity.name | snake_case }}_repository import Fake{{ entity.name }}Repository
 
 
 @pytest.fixture

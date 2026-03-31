@@ -8,7 +8,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 
-async def test_create_{{ entity.name | lower }}(client):
+async def test_create_{{ entity.name | snake_case }}(client):
     response = await client.post(
         "/api/{{ entity.table_name }}",
         json={
@@ -28,6 +28,6 @@ async def test_list_{{ entity.table_name }}(client):
     assert isinstance(response.json(), list)
 
 
-async def test_get_{{ entity.name | lower }}_not_found(client):
+async def test_get_{{ entity.name | snake_case }}_not_found(client):
     response = await client.get(f"/api/{{ entity.table_name }}/{uuid.uuid4()}")
     assert response.status_code == 404
