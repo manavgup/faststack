@@ -1,3 +1,13 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   FastStack — Dependency Review
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Author:  Manav Gupta <manavg@gmail.com>
+#
+# Scans dependency changes in PRs for known vulnerabilities and
+# restricted licenses. Only runs when pyproject.toml or poetry.lock change.
+#
+
 name: Dependency Review
 
 on:
@@ -18,7 +28,8 @@ jobs:
     timeout-minutes: 5
     if: "!github.event.pull_request.draft"
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 

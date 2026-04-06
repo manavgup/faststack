@@ -1,3 +1,20 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   FastStack CI — Lint, Type Check, Test & Package
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Author:  Manav Gupta <manavg@gmail.com>
+#
+# Jobs:
+#   lint       — ruff + black formatting checks
+#   typecheck  — mypy static type analysis
+#   test       — pytest with 85% coverage threshold
+#   pre-commit — validate all pre-commit hooks
+#   package    — build wheel/sdist and validate with twine
+#
+# Triggers on push to main and PRs. Skips draft PRs.
+# Cancels stale runs on the same branch.
+#
+
 name: CI
 
 on:
@@ -14,18 +31,31 @@ concurrency:
 permissions:
   contents: read
 
+# ---------------------------------------------------------------------------
+# Shared environment
+# ---------------------------------------------------------------------------
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 jobs:
+
+  # =========================================================================
+  # 🔍 Lint & Format
+  # =========================================================================
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -48,17 +78,22 @@ jobs:
       - name: Black check
         run: poetry run black --check .
 
+  # =========================================================================
+  # 🔎 Type Check
+  # =========================================================================
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -78,6 +113,9 @@ jobs:
       - name: Mypy
         run: poetry run mypy faststack_core/ cli/
 
+  # =========================================================================
+  # 🧪 Tests & Coverage
+  # =========================================================================
   test:
     name: Test (py${{ matrix.python }})
     runs-on: ubuntu-latest
@@ -90,11 +128,13 @@ jobs:
         python: ["3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
@@ -114,7 +154,9 @@ jobs:
       - name: Run tests with coverage
         run: |
           poetry run pytest \
-            --cov --cov-report=term --cov-report=xml \
+            --cov \
+            --cov-report=term \
+            --cov-report=xml \
             --cov-fail-under=85 \
             -v --tb=short
 
@@ -125,17 +167,22 @@ jobs:
           name: coverage-py${{ matrix.python }}
           path: coverage.xml
 
+  # =========================================================================
+  # ✅ Pre-commit
+  # =========================================================================
   pre-commit:
     name: Pre-commit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -146,19 +193,25 @@ jobs:
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: ${{ runner.os }}-pre-commit-
 
-      - uses: pre-commit/action@v3.0.1
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
 
+  # =========================================================================
+  # 📦 Package Build
+  # =========================================================================
   package:
     name: Package Build
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
