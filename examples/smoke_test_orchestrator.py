@@ -92,9 +92,7 @@ class MessageRepository(SqlAlchemyRepository):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, ConversationMessage)
 
-    async def create_message(
-        self, session_id: UUID, content: str, role: str
-    ) -> ConversationMessage:
+    async def create_message(self, session_id: UUID, content: str, role: str) -> ConversationMessage:
         track("DB WRITE", f"create {role} message ({len(content)} chars)")
         return await self.create(
             {
@@ -107,9 +105,7 @@ class MessageRepository(SqlAlchemyRepository):
 
     async def get_messages_by_session(self, session_id: UUID) -> list[ConversationMessage]:
         track("DB READ", "get messages for session")
-        result = await self.db.execute(
-            select(ConversationMessage).where(ConversationMessage.session_id == session_id)
-        )
+        result = await self.db.execute(select(ConversationMessage).where(ConversationMessage.session_id == session_id))
         return list(result.scalars().all())
 
     async def get_token_usage(self, session_id: UUID) -> int:

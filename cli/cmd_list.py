@@ -14,9 +14,7 @@ def list_entities() -> None:
     """Show all entities and their generation status."""
     config_path = Path(".project-config.yaml")
     if not config_path.exists():
-        raise click.ClickException(
-            "No .project-config.yaml found. Run this from a FastStack project root."
-        )
+        raise click.ClickException("No .project-config.yaml found. Run this from a FastStack project root.")
 
     config = yaml.safe_load(config_path.read_text())
     entities = config.get("entities", {})

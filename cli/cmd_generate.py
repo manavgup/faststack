@@ -78,9 +78,7 @@ def generate(entity_name: str | None, generate_all: bool, force: bool) -> None:
 
         # Skip PRESERVED files unless --force
         if force:
-            if not click.confirm(
-                f"Regenerate PRESERVED files for {name}? This will overwrite user code."
-            ):
+            if not click.confirm(f"Regenerate PRESERVED files for {name}? This will overwrite user code."):
                 continue
             for template_name, path_pattern in PRESERVED_FILES.items():
                 output_path = Path(path_pattern.format(name=_camel_to_snake(name)))

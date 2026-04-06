@@ -109,9 +109,7 @@ class TestGenerateRegenerates:
         new_hash = config["entities"]["Product"]["hash"]
         assert new_hash != original_hash
 
-    def test_regenerates_all_regeneratable_files(
-        self, runner: CliRunner, project_with_entity: Path
-    ) -> None:
+    def test_regenerates_all_regeneratable_files(self, runner: CliRunner, project_with_entity: Path) -> None:
         project = project_with_entity
 
         regeneratable = [
@@ -142,9 +140,7 @@ class TestGenerateRegenerates:
 class TestGenerateRegistryFiles:
     """Test that ``faststack generate`` regenerates registry files."""
 
-    def test_regenerates_dependencies_py(
-        self, runner: CliRunner, project_with_entity: Path
-    ) -> None:
+    def test_regenerates_dependencies_py(self, runner: CliRunner, project_with_entity: Path) -> None:
         project = project_with_entity
         deps_path = project / "app/api/dependencies.py"
 
@@ -163,9 +159,7 @@ class TestGenerateRegistryFiles:
         assert "get_product_service" in content
         assert "get_db_session" in content
 
-    def test_regenerates_integration_conftest(
-        self, runner: CliRunner, project_with_entity: Path
-    ) -> None:
+    def test_regenerates_integration_conftest(self, runner: CliRunner, project_with_entity: Path) -> None:
         project = project_with_entity
         conftest_path = project / "tests/integration/conftest.py"
 
@@ -188,9 +182,7 @@ class TestGenerateRegistryFiles:
 class TestGenerateAllFlag:
     """Test ``faststack generate --all``."""
 
-    def test_generate_all_regenerates_all_entities(
-        self, runner: CliRunner, project_with_entity: Path
-    ) -> None:
+    def test_generate_all_regenerates_all_entities(self, runner: CliRunner, project_with_entity: Path) -> None:
         project = project_with_entity
 
         # Add a second entity
@@ -232,9 +224,7 @@ class TestGenerateErrorCases:
         assert result.exit_code != 0
         assert ".project-config.yaml" in result.output
 
-    def test_error_no_entity_name_or_all(
-        self, runner: CliRunner, project_with_entity: Path
-    ) -> None:
+    def test_error_no_entity_name_or_all(self, runner: CliRunner, project_with_entity: Path) -> None:
         result = runner.invoke(
             cli_group,
             ["generate"],
@@ -243,9 +233,7 @@ class TestGenerateErrorCases:
         assert result.exit_code != 0
         assert "Provide entity name or --all" in result.output
 
-    def test_skips_when_model_file_missing(
-        self, runner: CliRunner, project_with_entity: Path
-    ) -> None:
+    def test_skips_when_model_file_missing(self, runner: CliRunner, project_with_entity: Path) -> None:
         project = project_with_entity
 
         # Remove model file

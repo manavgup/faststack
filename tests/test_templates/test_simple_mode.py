@@ -149,8 +149,7 @@ def test_template_renders_valid_python(jinja_env, template_name, entity):
         ast.parse(output)
     except SyntaxError as e:
         pytest.fail(
-            f"{template_name} for {entity.name} produced invalid Python:\n"
-            f"  {e}\n\nGenerated code:\n{output}"
+            f"{template_name} for {entity.name} produced invalid Python:\n" f"  {e}\n\nGenerated code:\n{output}"
         )
 
 

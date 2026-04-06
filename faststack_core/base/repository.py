@@ -53,9 +53,7 @@ class Repository(Protocol[T]):
 class SearchableRepository(Repository[T], Protocol):
     """Extended contract with full-text search and sorting."""
 
-    async def search(
-        self, query: str, fields: list[str], skip: int = 0, limit: int = 100
-    ) -> list[T]: ...
+    async def search(self, query: str, fields: list[str], skip: int = 0, limit: int = 100) -> list[T]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -79,9 +77,7 @@ class SqlAlchemyRepository(Generic[T]):
         self.model = model
 
     async def get_by_id(self, id: UUID) -> T | None:
-        result = await self.db.execute(
-            select(self.model).where(self.model.id == id)  # type: ignore[attr-defined]
-        )
+        result = await self.db.execute(select(self.model).where(self.model.id == id))  # type: ignore[attr-defined]
         return result.scalar_one_or_none()
 
     async def list(self, skip: int = 0, limit: int = 100) -> list[T]:

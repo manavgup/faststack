@@ -104,10 +104,7 @@ def init_project(project_name: str, entities: str | None = None) -> None:
 
     # Create .env file
     db_name = project_name.lower().replace("-", "_")
-    env_content = (
-        f"DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/{db_name}\n"
-        f"LOG_LEVEL=INFO\n"
-    )
+    env_content = f"DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/{db_name}\n" f"LOG_LEVEL=INFO\n"
     (project_dir / ".env").write_text(env_content)
 
     # Generate entity files if YAML was provided

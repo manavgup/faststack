@@ -178,9 +178,7 @@ class TestAddEntityErrorCases:
         assert result2.exit_code != 0
         assert "already exists" in result2.output
 
-    def test_update_flag_succeeds_when_entity_exists(
-        self, runner: CliRunner, project_dir: Path
-    ) -> None:
+    def test_update_flag_succeeds_when_entity_exists(self, runner: CliRunner, project_dir: Path) -> None:
         # First creation
         runner.invoke(
             cli_group,
@@ -288,9 +286,7 @@ class TestAddEntityRegistration:
         assert "FakeProductRepository" in content
         ast.parse(content)
 
-    def test_multiple_entities_in_registry_files(
-        self, runner: CliRunner, project_dir: Path
-    ) -> None:
+    def test_multiple_entities_in_registry_files(self, runner: CliRunner, project_dir: Path) -> None:
         runner.invoke(
             cli_group,
             ["add-entity", "Product", "--fields", "name:string:required"],
@@ -327,9 +323,7 @@ class TestAddEntityFileContents:
         assert "class Product(" in content
         assert '__tablename__ = "products"' in content
 
-    def test_schema_contains_create_and_response(
-        self, runner: CliRunner, project_dir: Path
-    ) -> None:
+    def test_schema_contains_create_and_response(self, runner: CliRunner, project_dir: Path) -> None:
         runner.invoke(
             cli_group,
             ["add-entity", "Product", "--fields", "name:string:required,price:decimal"],

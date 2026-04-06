@@ -25,9 +25,7 @@ class StructuredLogger:
 
         # Console handler — simple text format
         console = logging.StreamHandler(sys.stderr)
-        console.setFormatter(
-            logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
-        )
+        console.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"))
         logger.addHandler(console)
 
         return logger

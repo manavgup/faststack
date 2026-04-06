@@ -89,8 +89,7 @@ def _validate_type(yaml_type: str) -> None:
     """Raise ValueError if *yaml_type* is not a recognised YAML field type."""
     if yaml_type not in ALL_YAML_TYPES:
         raise ValueError(
-            f"Unknown YAML field type: {yaml_type!r}. "
-            f"Supported types: {', '.join(sorted(ALL_YAML_TYPES))}"
+            f"Unknown YAML field type: {yaml_type!r}. " f"Supported types: {', '.join(sorted(ALL_YAML_TYPES))}"
         )
 
 

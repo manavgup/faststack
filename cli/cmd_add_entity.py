@@ -188,9 +188,7 @@ def _regenerate_registry_files() -> None:
     conftest_path.write_text(conftest_template.render(**context))
 
 
-def _update_project_config(
-    config_path: Path, entity_def: EntityDefinition, model_path: Path
-) -> None:
+def _update_project_config(config_path: Path, entity_def: EntityDefinition, model_path: Path) -> None:
     """Update ``.project-config.yaml`` with entity name, model path, and hash."""
     config = yaml.safe_load(config_path.read_text()) or {}
     entities = config.get("entities", {})
@@ -245,9 +243,7 @@ def add_entity(
     # Check if entity already exists
     model_path = Path(f"app/models/{_camel_to_snake(entity_name)}.py")
     if model_path.exists() and not update:
-        raise click.ClickException(
-            f"Entity '{entity_name}' already exists. Use --update to merge fields."
-        )
+        raise click.ClickException(f"Entity '{entity_name}' already exists. Use --update to merge fields.")
 
     # Generate files from templates
     _generate_entity_files(entity_def, update)
@@ -260,7 +256,4 @@ def add_entity(
     _regenerate_registry_files()
 
     click.echo(f"{'Updated' if update else 'Created'} entity '{entity_name}'")
-    click.echo(
-        f"\nRun 'faststack migrate generate \"add {entity_name.lower()}\"' "
-        f"to create the migration."
-    )
+    click.echo(f"\nRun 'faststack migrate generate \"add {entity_name.lower()}\"' " f"to create the migration.")
