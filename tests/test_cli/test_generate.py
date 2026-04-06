@@ -139,6 +139,52 @@ class TestGenerateRegenerates:
             assert content != "# corrupted\n", f"File {f} was not regenerated"
 
 
+class TestGenerateRegistryFiles:
+    """Test that ``faststack generate`` regenerates registry files."""
+
+    def test_regenerates_dependencies_py(
+        self, runner: CliRunner, project_with_entity: Path
+    ) -> None:
+        project = project_with_entity
+        deps_path = project / "app/api/dependencies.py"
+
+        # Corrupt dependencies.py
+        deps_path.write_text("# corrupted\n")
+
+        # Regenerate
+        result = runner.invoke(
+            cli_group,
+            ["generate", "Product"],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        content = deps_path.read_text()
+        assert "get_product_service" in content
+        assert "get_db_session" in content
+
+    def test_regenerates_integration_conftest(
+        self, runner: CliRunner, project_with_entity: Path
+    ) -> None:
+        project = project_with_entity
+        conftest_path = project / "tests/integration/conftest.py"
+
+        # Corrupt conftest
+        conftest_path.write_text("# corrupted\n")
+
+        # Regenerate
+        result = runner.invoke(
+            cli_group,
+            ["generate", "Product"],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        content = conftest_path.read_text()
+        assert "async def client" in content
+        assert "FakeProductRepository" in content
+
+
 class TestGenerateAllFlag:
     """Test ``faststack generate --all``."""
 

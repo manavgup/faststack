@@ -11,6 +11,7 @@ from cli.cmd_add_entity import (
     _camel_to_snake,
     _generate_entity_files,
     _pluralize,
+    _regenerate_registry_files,
     _update_project_config,
 )
 from cli.yaml_parser import parse_entities_yaml
@@ -120,6 +121,7 @@ def init_project(project_name: str, entities: str | None = None) -> None:
                 model_path = Path(f"app/models/{_camel_to_snake(entity_def.name)}.py")
                 _update_project_config(config_path, entity_def, model_path)
                 click.echo(f"  Generated entity: {entity_def.name}")
+            _regenerate_registry_files()
         finally:
             os.chdir(original_cwd)
 

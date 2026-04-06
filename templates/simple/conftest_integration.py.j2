@@ -1,0 +1,40 @@
+{#- --------------------------------------------------------------------------
+    conftest_integration.py.j2 — Integration test fixtures with DI overrides.
+
+    Template variables:
+      entities  — list of dicts with keys: name (str), snake_name (str)
+   -------------------------------------------------------------------------- -#}
+"""Integration test fixtures with fake-repository DI overrides."""
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+from app.api.dependencies import (
+{%- for entity in entities %}
+    get_{{ entity.snake_name }}_service,
+{%- endfor %}
+)
+{% for entity in entities %}
+from app.services.{{ entity.snake_name }} import {{ entity.name }}Service
+from tests.unit.fakes.{{ entity.snake_name }}_repository import Fake{{ entity.name }}Repository
+{%- endfor %}
+
+
+@pytest.fixture
+async def client():
+    """Async HTTP client with fake repositories injected."""
+{%- for entity in entities %}
+    fake_{{ entity.snake_name }}_repo = Fake{{ entity.name }}Repository()
+    app.dependency_overrides[get_{{ entity.snake_name }}_service] = (
+        lambda _repo=fake_{{ entity.snake_name }}_repo: {{ entity.name }}Service(_repo)
+    )
+{%- endfor %}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as c:
+        yield c
+
+    app.dependency_overrides.clear()

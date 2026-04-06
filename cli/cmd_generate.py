@@ -8,7 +8,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from cli import cli_group
-from cli.cmd_add_entity import _camel_to_snake, _pluralize
+from cli.cmd_add_entity import _camel_to_snake, _pluralize, _regenerate_registry_files
 from cli.model_introspector import introspect_model
 
 SIMPLE_TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "simple"
@@ -103,4 +103,8 @@ def generate(entity_name: str | None, generate_all: bool, force: bool) -> None:
 
     config["entities"] = entities
     config_path.write_text(yaml.dump(config, default_flow_style=False))
+
+    # Regenerate multi-entity registry files (dependencies.py, integration conftest)
+    _regenerate_registry_files()
+
     click.echo("\nDone.")

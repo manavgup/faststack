@@ -228,6 +228,91 @@ class TestAddEntityErrorCases:
         assert "Provide --fields or --from-yaml" in result.output
 
 
+class TestAddEntityRegistration:
+    """Test that ``faststack add-entity`` registers the router in main.py and generates registry files."""
+
+    def test_registers_router_in_main_py(self, runner: CliRunner, project_dir: Path) -> None:
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Product", "--fields", "name:string:required,price:decimal"],
+            catch_exceptions=False,
+        )
+
+        main_content = (project_dir / "app/main.py").read_text()
+        assert "from app.api.routes.product import router as product_router" in main_content
+        assert "app.include_router(product_router" in main_content
+
+    def test_no_duplicate_router_registration(self, runner: CliRunner, project_dir: Path) -> None:
+        # First creation
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Product", "--fields", "name:string:required"],
+            catch_exceptions=False,
+        )
+
+        # Update with --update (should not duplicate)
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Product", "--fields", "name:string:required,price:decimal", "--update"],
+            catch_exceptions=False,
+        )
+
+        main_content = (project_dir / "app/main.py").read_text()
+        assert main_content.count("product_router") == 2  # one import, one include_router
+
+    def test_generates_dependencies_py(self, runner: CliRunner, project_dir: Path) -> None:
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Product", "--fields", "name:string:required"],
+            catch_exceptions=False,
+        )
+
+        deps_path = project_dir / "app/api/dependencies.py"
+        assert deps_path.is_file()
+        content = deps_path.read_text()
+        assert "get_product_service" in content
+        assert "get_db_session" in content
+        ast.parse(content)
+
+    def test_generates_integration_conftest(self, runner: CliRunner, project_dir: Path) -> None:
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Product", "--fields", "name:string:required"],
+            catch_exceptions=False,
+        )
+
+        conftest_path = project_dir / "tests/integration/conftest.py"
+        assert conftest_path.is_file()
+        content = conftest_path.read_text()
+        assert "async def client" in content
+        assert "FakeProductRepository" in content
+        ast.parse(content)
+
+    def test_multiple_entities_in_registry_files(
+        self, runner: CliRunner, project_dir: Path
+    ) -> None:
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Product", "--fields", "name:string:required"],
+            catch_exceptions=False,
+        )
+        runner.invoke(
+            cli_group,
+            ["add-entity", "Order", "--fields", "total:decimal:required"],
+            catch_exceptions=False,
+        )
+
+        deps_content = (project_dir / "app/api/dependencies.py").read_text()
+        assert "get_product_service" in deps_content
+        assert "get_order_service" in deps_content
+        ast.parse(deps_content)
+
+        conftest_content = (project_dir / "tests/integration/conftest.py").read_text()
+        assert "FakeProductRepository" in conftest_content
+        assert "FakeOrderRepository" in conftest_content
+        ast.parse(conftest_content)
+
+
 class TestAddEntityFileContents:
     """Test content of generated entity files."""
 

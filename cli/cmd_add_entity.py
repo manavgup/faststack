@@ -1,5 +1,6 @@
 """faststack add-entity — scaffold a new entity."""
 
+import ast
 import hashlib
 from pathlib import Path
 
@@ -103,6 +104,90 @@ def _generate_entity_files(entity_def: EntityDefinition, update: bool) -> None:
         output_path.write_text(content)
 
 
+def _register_router_in_main(entity_name: str) -> None:
+    """Append router import and include_router to app/main.py if not already present."""
+    main_path = Path("app/main.py")
+    if not main_path.exists():
+        return
+
+    snake = _camel_to_snake(entity_name)
+    source = main_path.read_text()
+
+    # Use AST to check whether the import already exists
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return
+
+    module_name = f"app.api.routes.{snake}"
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == module_name:
+            return  # already registered
+
+    import_line = f"from app.api.routes.{snake} import router as {snake}_router"
+    include_line = f'app.include_router({snake}_router, prefix="/api")'
+
+    lines = source.rstrip("\n").split("\n")
+
+    # Find the last include_router line to insert after it
+    last_include_idx = -1
+    for i, line in enumerate(lines):
+        if "app.include_router(" in line:
+            last_include_idx = i
+
+    if last_include_idx >= 0:
+        # Insert after the last include_router block
+        lines.insert(last_include_idx + 1, f"\n{import_line}")
+        lines.insert(last_include_idx + 2, include_line)
+    else:
+        # No existing include_router — append at end of file
+        lines.append("")
+        lines.append(import_line)
+        lines.append(include_line)
+
+    main_path.write_text("\n".join(lines) + "\n")
+
+
+def _regenerate_registry_files() -> None:
+    """Render multi-entity templates (dependencies.py, integration conftest).
+
+    These templates need the full entity list from .project-config.yaml,
+    unlike per-entity templates.
+    """
+    config_path = Path(".project-config.yaml")
+    if not config_path.exists():
+        return
+
+    config = yaml.safe_load(config_path.read_text()) or {}
+    entities_map = config.get("entities") or {}
+    if not entities_map:
+        return
+
+    # Build entity context list
+    entities = [{"name": name, "snake_name": _camel_to_snake(name)} for name in entities_map]
+
+    env = Environment(
+        loader=FileSystemLoader(str(SIMPLE_TEMPLATE_DIR)),
+        keep_trailing_newline=True,
+    )
+    env.filters["snake_case"] = _camel_to_snake
+    env.filters["pluralize"] = _pluralize
+
+    context = {"entities": entities}
+
+    # Render dependencies.py
+    deps_path = Path("app/api/dependencies.py")
+    deps_path.parent.mkdir(parents=True, exist_ok=True)
+    deps_template = env.get_template("dependencies.py.j2")
+    deps_path.write_text(deps_template.render(**context))
+
+    # Render integration test conftest
+    conftest_path = Path("tests/integration/conftest.py")
+    conftest_path.parent.mkdir(parents=True, exist_ok=True)
+    conftest_template = env.get_template("conftest_integration.py.j2")
+    conftest_path.write_text(conftest_template.render(**context))
+
+
 def _update_project_config(
     config_path: Path, entity_def: EntityDefinition, model_path: Path
 ) -> None:
@@ -169,6 +254,10 @@ def add_entity(
 
     # Update .project-config.yaml
     _update_project_config(config_path, entity_def, model_path)
+
+    # Register router in main.py and regenerate registry files
+    _register_router_in_main(entity_name)
+    _regenerate_registry_files()
 
     click.echo(f"{'Updated' if update else 'Created'} entity '{entity_name}'")
     click.echo(

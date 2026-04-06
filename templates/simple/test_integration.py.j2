@@ -1,11 +1,8 @@
 """Integration tests for {{ entity.name }} API endpoints."""
 
-# TODO: Wire up the `client` fixture with FastAPI TestClient + DI overrides (Phase 6).
-
 import uuid
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 
 async def test_create_{{ entity.name | snake_case }}(client):

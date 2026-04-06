@@ -4,12 +4,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
+from app.api.dependencies import get_{{ entity.name | snake_case }}_service
 from app.schemas.{{ entity.name | snake_case }} import (
     {{ entity.name }}Create,
     {{ entity.name }}DetailResponse,
     {{ entity.name }}Response,
     {{ entity.name }}Update,
 )
+from app.services.{{ entity.name | snake_case }} import {{ entity.name }}Service
 
 router = APIRouter(
     prefix="/{{ entity.table_name }}",
@@ -27,31 +29,44 @@ async def list_{{ entity.table_name }}(
 {%- if entity.searchable %}
     q: str | None = Query(None, description="Search {{ entity.searchable | join(', ') }}"),
 {%- endif %}
-    # TODO: Inject service via Depends()
+    service: {{ entity.name }}Service = Depends(get_{{ entity.name | snake_case }}_service),
 ):
     """List {{ entity.name }} records."""
-    ...
+    return await service.list(skip=skip, limit=limit)
 
 
 @router.get("/{id}", response_model={{ entity.name }}DetailResponse)
-async def get_{{ entity.name | snake_case }}(id: UUID):
+async def get_{{ entity.name | snake_case }}(
+    id: UUID,
+    service: {{ entity.name }}Service = Depends(get_{{ entity.name | snake_case }}_service),
+):
     """Get a single {{ entity.name }} by ID."""
-    ...
+    return await service.get(id)
 
 
 @router.post("/", response_model={{ entity.name }}Response, status_code=201)
-async def create_{{ entity.name | snake_case }}(data: {{ entity.name }}Create):
+async def create_{{ entity.name | snake_case }}(
+    data: {{ entity.name }}Create,
+    service: {{ entity.name }}Service = Depends(get_{{ entity.name | snake_case }}_service),
+):
     """Create a new {{ entity.name }}."""
-    ...
+    return await service.create(data.model_dump())
 
 
 @router.put("/{id}", response_model={{ entity.name }}Response)
-async def update_{{ entity.name | snake_case }}(id: UUID, data: {{ entity.name }}Update):
+async def update_{{ entity.name | snake_case }}(
+    id: UUID,
+    data: {{ entity.name }}Update,
+    service: {{ entity.name }}Service = Depends(get_{{ entity.name | snake_case }}_service),
+):
     """Update an existing {{ entity.name }}."""
-    ...
+    return await service.update(id, data.model_dump(exclude_unset=True))
 
 
 @router.delete("/{id}", status_code=204)
-async def delete_{{ entity.name | snake_case }}(id: UUID):
+async def delete_{{ entity.name | snake_case }}(
+    id: UUID,
+    service: {{ entity.name }}Service = Depends(get_{{ entity.name | snake_case }}_service),
+):
     """Delete a {{ entity.name }}."""
-    ...
+    await service.delete(id)
