@@ -131,9 +131,15 @@ class TestRelationships:
         assert rel.field_name == "parent_id"
         assert rel.back_populates == "children"
 
-    def test_user_has_no_relationships(self, parsed_entities):
+    def test_user_has_reverse_relationship(self, parsed_entities):
+        """User gets a reverse one_to_many from Post's FK."""
         user = parsed_entities[0]
-        assert len(user.relationships) == 0
+        assert len(user.relationships) == 1
+        rel = user.relationships[0]
+        assert rel.type == "one_to_many"
+        assert rel.target_entity == "Post"
+        assert rel.field_name == "posts"
+        assert rel.back_populates == "user"
 
 
 # ---------------------------------------------------------------------------

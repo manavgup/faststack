@@ -222,6 +222,10 @@ class {{ entity.name }}({{ entity.base }}):
 
     # Relationship to {{ rel.target_entity }}
     {{ rel.target_entity | lower }}: Mapped["{{ rel.target_entity }}"] = relationship(back_populates="{{ rel.back_populates }}")
+{%- elif rel.type == "one_to_many" %}
+
+    # Reverse relationship to {{ rel.target_entity }}
+    {{ rel.field_name }}: Mapped[list["{{ rel.target_entity }}"]] = relationship(back_populates="{{ rel.back_populates }}")
 {%- elif rel.type == "self_referential" %}
 
     # Self-referential relationship
