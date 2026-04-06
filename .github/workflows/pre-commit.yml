@@ -1,0 +1,68 @@
+# ===============================================================
+# ✅ Pre-commit Checks
+# ===============================================================
+#
+# This workflow:
+#   - Runs all pre-commit hooks against the full codebase
+#   - Validates: trailing whitespace, EOF, YAML/TOML syntax,
+#     Python AST, debug statements, private key detection,
+#     ruff lint, black formatting
+#
+# Only runs on PRs (not push to main — the lint workflow covers that).
+# Skips draft PRs. Cancels stale runs.
+#
+# References
+# ──────────
+#   - Pre-commit:        https://pre-commit.com/
+#   - pre-commit/action: https://github.com/pre-commit/action
+#
+# Author:  Manav Gupta <manavg@gmail.com>
+# ===============================================================
+
+name: Pre-commit Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# -----------------------------------------------------------------
+# Minimal permissions — principle of least privilege
+# -----------------------------------------------------------------
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    name: Run pre-commit hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: "!github.event.pull_request.draft"
+
+    steps:
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 🐍  Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 💾  Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: ${{ runner.os }}-pre-commit-
+
+      # ─────────── Check ───────────
+      - name: ✅  Run pre-commit hooks
+        uses: pre-commit/action@v3.0.1

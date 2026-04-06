@@ -1,36 +1,40 @@
 # ===============================================================
-# 🧪 Tests & Coverage + 📦 Package Build
+# 🔍 Lint & Static Analysis — Code Quality Gate
 # ===============================================================
 #
 # This workflow:
-#   - Runs pytest with 85% coverage threshold               (test)
-#   - Uploads coverage.xml as artifact                       (test)
-#   - Builds wheel/sdist and validates with twine            (package)
-#
-# Lint, type-check, and pre-commit live in separate workflows
-# (lint.yml, pre-commit.yml) so they appear as independent
-# checks on PRs.
+#   - Runs ruff for linting and import sorting
+#   - Runs black for code formatting checks
+#   - Runs mypy for static type analysis
 #
 # Triggers on push to main and PRs. Skips draft PRs.
 # Cancels stale runs on the same branch.
 #
 # References
 # ──────────
-#   - Poetry:  https://python-poetry.org/docs/
-#   - Pytest:  https://docs.pytest.org/
-#   - Twine:   https://twine.readthedocs.io/
+#   - Ruff:   https://docs.astral.sh/ruff/
+#   - Black:  https://black.readthedocs.io/
+#   - Mypy:   https://mypy.readthedocs.io/
 #
 # Author:  Manav Gupta <manavg@gmail.com>
 # ===============================================================
 
-name: Tests & Package
+name: Lint & Static Analysis
 
 on:
   push:
     branches: [main]
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - ".github/workflows/lint.yml"
   pull_request:
     types: [opened, synchronize, ready_for_review]
     branches: [main]
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - ".github/workflows/lint.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,76 +46,13 @@ concurrency:
 permissions:
   contents: read
 
-# -----------------------------------------------------------------
-# Shared environment
-# -----------------------------------------------------------------
-env:
-  PYTHONUNBUFFERED: "1"
-  PIP_DISABLE_PIP_VERSION_CHECK: "1"
-
 jobs:
 
   # =========================================================================
-  # 🧪 Tests & Coverage
+  # 🔍 Ruff + Black
   # =========================================================================
-  test:
-    name: Test (py${{ matrix.python }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.12"]
-
-    steps:
-      # ─────────── Setup ───────────
-      - name: ⬇️  Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: 🐍  Setup Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: 📦  Install Poetry
-        run: pipx install poetry
-
-      - name: 💾  Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-          restore-keys: ${{ runner.os }}-poetry-
-
-      - name: 📦  Install dependencies
-        run: poetry install --no-interaction
-
-      # ─────────── Test ───────────
-      - name: 🧪  Run tests with coverage
-        run: |
-          poetry run pytest \
-            --cov \
-            --cov-report=term \
-            --cov-report=xml \
-            --cov-fail-under=85 \
-            -v --tb=short
-
-      - name: 📊  Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-py${{ matrix.python }}
-          path: coverage.xml
-
-  # =========================================================================
-  # 📦 Package Build
-  # =========================================================================
-  package:
-    name: Package Build
+  python-lint:
+    name: Ruff & Black
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -131,11 +72,57 @@ jobs:
       - name: 📦  Install Poetry
         run: pipx install poetry
 
-      # ─────────── Build & Validate ───────────
-      - name: 🔨  Build distributions
-        run: poetry build
+      - name: 💾  Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-poetry-
 
-      - name: ✅  Validate package metadata (twine)
-        run: |
-          pip install twine
-          twine check dist/*
+      - name: 📦  Install dependencies
+        run: poetry install --no-interaction
+
+      # ─────────── Checks ───────────
+      - name: 🔍  Ruff lint
+        run: poetry run ruff check .
+
+      - name: 🎨  Black format check
+        run: poetry run black --check .
+
+  # =========================================================================
+  # 🔎 Type Check
+  # =========================================================================
+  typecheck:
+    name: Mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+
+    steps:
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: 🐍  Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦  Install Poetry
+        run: pipx install poetry
+
+      - name: 💾  Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-poetry-
+
+      - name: 📦  Install dependencies
+        run: poetry install --no-interaction
+
+      # ─────────── Check ───────────
+      - name: 🔎  Mypy type check
+        run: poetry run mypy faststack_core/ cli/
