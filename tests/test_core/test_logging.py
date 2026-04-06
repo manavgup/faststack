@@ -3,7 +3,7 @@
 import logging
 
 from faststack_core.logging.config import LogConfig
-from faststack_core.logging.masking import MASK_VALUE, mask_sensitive_data
+from faststack_core.logging.masking import MASK_VALUE, SensitiveDataFilter, mask_sensitive_data
 from faststack_core.logging.structured_logger import (
     StructuredLogger,
     correlation_id_var,
@@ -87,6 +87,16 @@ def test_mask_non_dict_passthrough():
     assert mask_sensitive_data(None) is None
 
 
+def test_sensitive_data_filter_masks_extra_fields():
+    filt = SensitiveDataFilter(["password"])
+    record = logging.LogRecord("test", logging.INFO, "", 0, "msg", (), None)
+    record.password = "secret123"
+    record.username = "alice"
+    filt.filter(record)
+    assert record.password == MASK_VALUE
+    assert record.username == "alice"
+
+
 # ---------------------------------------------------------------------------
 # Structured logger
 # ---------------------------------------------------------------------------
@@ -104,6 +114,39 @@ def test_structured_logger_has_handler():
     sl = StructuredLogger()
     logger = sl.setup(app_name="test-handlers")
     assert len(logger.handlers) > 0
+
+
+def test_structured_logger_json_format():
+    sl = StructuredLogger()
+    logger = sl.setup(app_name="test-json", log_format="json")
+    handler = logger.handlers[0]
+    from pythonjsonlogger import json as jsonlogger
+
+    assert isinstance(handler.formatter, jsonlogger.JsonFormatter)
+
+
+def test_structured_logger_text_format():
+    sl = StructuredLogger()
+    logger = sl.setup(app_name="test-text", log_format="text")
+    handler = logger.handlers[0]
+    assert isinstance(handler.formatter, logging.Formatter)
+    assert "%(asctime)s" in handler.formatter._fmt
+
+
+def test_structured_logger_masking_filter():
+    sl = StructuredLogger()
+    logger = sl.setup(app_name="test-masking", sensitive_fields=["password", "token"])
+    handler = logger.handlers[0]
+    filters = handler.filters
+    assert len(filters) == 1
+    assert filters[0].patterns == ["password", "token"]
+
+
+def test_structured_logger_no_masking_by_default():
+    sl = StructuredLogger()
+    logger = sl.setup(app_name="test-no-masking")
+    handler = logger.handlers[0]
+    assert len(handler.filters) == 0
 
 
 # ---------------------------------------------------------------------------

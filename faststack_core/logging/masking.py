@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 DEFAULT_SENSITIVE_PATTERNS = [
@@ -42,3 +43,19 @@ def mask_sensitive_data(
         return [mask_sensitive_data(item, patterns, max_depth - 1) for item in data]
 
     return data
+
+
+class SensitiveDataFilter(logging.Filter):
+    """Logging filter that masks sensitive values in log record ``extra`` fields."""
+
+    def __init__(self, sensitive_fields: list[str] | None = None) -> None:
+        super().__init__()
+        self.patterns = sensitive_fields or DEFAULT_SENSITIVE_PATTERNS
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if hasattr(record, "msg") and isinstance(record.msg, dict):
+            record.msg = mask_sensitive_data(record.msg, self.patterns)
+        for key in list(vars(record)):
+            if any(p.lower() in key.lower() for p in self.patterns):
+                setattr(record, key, MASK_VALUE)
+        return True
