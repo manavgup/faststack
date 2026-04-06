@@ -67,11 +67,14 @@ def _pluralize(name: str) -> str:
     """Return a lowercase, pluralized table name for *name*.
 
     Uses *inflect* for proper English pluralization.
+    Skips words that are already plural (e.g. "parameters").
     """
     # Convert CamelCase to snake_case first
     snake = _camel_to_snake(name)
+    # Check if already plural — singular_noun() returns False for singular words
+    if _inflect_engine.singular_noun(snake) is not False:
+        return snake
     plural = _inflect_engine.plural_noun(snake)
-    # inflect returns False if the word is already plural
     return plural if plural else snake
 
 

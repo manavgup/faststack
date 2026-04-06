@@ -83,7 +83,7 @@ from faststack_core.base.entity import {{ entity.base }}
 
 if TYPE_CHECKING:
 {%- for target in _tc.targets | sort %}
-    from app.models.{{ target | lower }} import {{ target }}
+    from app.models.{{ target | snake_case }} import {{ target }}
 {%- endfor %}
 {%- endif %}
 {#- ---------- Enum classes ---------- -#}
