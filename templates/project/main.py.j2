@@ -4,10 +4,13 @@ from fastapi import FastAPI
 from faststack_core.settings.config import FastStackConfig
 from faststack_core.setup import setup_app
 
+from app.config import settings
+
 app = FastAPI(title="{{ project_name }}")
 
 setup_app(app, FastStackConfig(
     app_version="0.1.0",
+    log_level=settings.log_level,
 ))
 
 {% for entity in entities %}

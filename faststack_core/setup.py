@@ -25,7 +25,11 @@ def setup_app(app: FastAPI, config: FastStackConfig | None = None) -> None:
 
     # Logging
     logger = StructuredLogger()
-    logger.setup(log_level=config.log_level)
+    logger.setup(
+        log_level=config.log_level,
+        log_format=config.log_format,
+        sensitive_fields=config.sensitive_fields,
+    )
 
     # Middleware (order matters — outermost first)
     if config.security_headers:
