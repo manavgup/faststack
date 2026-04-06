@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, ready_for_review]
     branches: [main]
 
 concurrency:
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -30,6 +31,13 @@ jobs:
 
       - name: Install Poetry
         run: pipx install poetry
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-poetry-
 
       - name: Install dependencies
         run: poetry install --no-interaction
@@ -57,6 +65,13 @@ jobs:
       - name: Install Poetry
         run: pipx install poetry
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-poetry-
+
       - name: Install dependencies
         run: poetry install --no-interaction
 
@@ -64,7 +79,54 @@ jobs:
         run: poetry run mypy faststack_core/ cli/
 
   test:
-    name: Test
+    name: Test (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run tests with coverage
+        run: |
+          poetry run pytest \
+            --cov --cov-report=term --cov-report=xml \
+            --cov-fail-under=85 \
+            -v --tb=short
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-py${{ matrix.python }}
+          path: coverage.xml
+
+  pre-commit:
+    name: Pre-commit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -77,14 +139,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Poetry
-        run: pipx install poetry
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: ${{ runner.os }}-pre-commit-
 
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Run tests
-        run: poetry run pytest -v --tb=short || test $? -eq 5
+      - uses: pre-commit/action@v3.0.1
 
   package:
     name: Package Build
