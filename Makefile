@@ -153,10 +153,14 @@ pre-commit-install:
 # help: clean                - Remove build artifacts and caches
 .PHONY: clean
 clean:
-	find . -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache -o -name .ruff_cache -o -name htmlcov -o -name "*.egg-info" \) -exec rm -rf {} + 2>/dev/null || true
-	rm -rf dist/ build/ .coverage coverage.xml
+	@echo "🧹  Cleaning workspace..."
+	@find . -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache -o -name .ruff_cache -o -name htmlcov -o -name "*.egg-info" \) -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf dist/ build/ .coverage coverage.xml
+	@echo "✅  Clean complete."
 
 # help: clean-all            - Remove everything including virtual environment
 .PHONY: clean-all
 clean-all: clean
-	rm -rf $(VENV_DIR)
+	@echo "🗑️   Removing virtual environment..."
+	@rm -rf $(VENV_DIR)
+	@echo "✅  Full clean complete."
