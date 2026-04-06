@@ -59,20 +59,26 @@ faststack/
 
 ## Common Commands
 
+Run `make` or `make help` for all targets. Key ones:
+
 ```bash
-make install         # poetry install
-make test            # pytest
-make test-verbose    # pytest -v
+make install-dev     # venv + all deps + pre-commit hooks
+make check           # lint + typecheck + test with 85% coverage (CI gate)
+make test            # pytest with coverage
+make test-unit       # core + template tests only
+make test-integration # CLI command tests
 make lint            # ruff check + black --check
 make format          # ruff fix + black
 make typecheck       # mypy faststack_core/ cli/
-make check           # lint + typecheck + test (CI gate)
+make pre-commit      # run all pre-commit hooks
 make clean           # remove caches, build artifacts
-make help            # list all targets
 ```
 
 ## Key Documents
 
+- `DEVELOPING.md` — development setup, project structure, how generation works
+- `TESTING.md` — test organization, markers, coverage, patterns
+- `CONTRIBUTING.md` — workflow, code standards, PR process
 - `docs/design/fastapi-generator-plan.md` — design blueprint
 - `docs/implementation/v1-implementation-plan.md` — build sequence
 - `docs/architecture/adr/` — Architecture Decision Records (the reasoning)
