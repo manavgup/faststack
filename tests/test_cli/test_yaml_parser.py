@@ -132,6 +132,7 @@ class TestRelationships:
         assert rel.back_populates == "children"
 
     def test_user_has_no_relationships(self, parsed_entities):
+        """User has no FK fields, so no relationships (reverse side is user-added)."""
         user = parsed_entities[0]
         assert len(user.relationships) == 0
 

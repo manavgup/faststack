@@ -115,10 +115,15 @@ TEMPLATES = [
 
 @pytest.fixture
 def jinja_env():
-    return Environment(
+    from cli.cmd_add_entity import _camel_to_snake, _pluralize
+
+    env = Environment(
         loader=FileSystemLoader(str(TEMPLATE_DIR)),
         keep_trailing_newline=True,
     )
+    env.filters["snake_case"] = _camel_to_snake
+    env.filters["pluralize"] = _pluralize
+    return env
 
 
 def _render(jinja_env, template_name: str, entity: EntityDefinition) -> str:
@@ -144,8 +149,7 @@ def test_template_renders_valid_python(jinja_env, template_name, entity):
         ast.parse(output)
     except SyntaxError as e:
         pytest.fail(
-            f"{template_name} for {entity.name} produced invalid Python:\n"
-            f"  {e}\n\nGenerated code:\n{output}"
+            f"{template_name} for {entity.name} produced invalid Python:\n" f"  {e}\n\nGenerated code:\n{output}"
         )
 
 
@@ -299,3 +303,99 @@ def test_integration_test_has_endpoints(jinja_env):
     output = _render(jinja_env, "test_integration.py.j2", USER_ENTITY)
     assert "test_create" in output
     assert "test_list" in output
+
+
+def test_integration_test_has_no_todo(jinja_env):
+    output = _render(jinja_env, "test_integration.py.j2", USER_ENTITY)
+    assert "TODO" not in output
+
+
+# ---------------------------------------------------------------------------
+# Router template — wired endpoints
+# ---------------------------------------------------------------------------
+
+
+def test_router_has_service_depends(jinja_env):
+    output = _render(jinja_env, "router.py.j2", USER_ENTITY)
+    assert "Depends(get_user_service)" in output
+    assert "service: UserService" in output
+
+
+def test_router_has_no_stubs(jinja_env):
+    output = _render(jinja_env, "router.py.j2", USER_ENTITY)
+    # Endpoints should have real bodies, not `...`
+    lines = output.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "...":
+            pytest.fail(f"Found stub '...' at line {i + 1} in rendered router")
+
+
+def test_router_imports_dependencies(jinja_env):
+    output = _render(jinja_env, "router.py.j2", USER_ENTITY)
+    assert "from app.api.dependencies import get_user_service" in output
+    assert "from app.services.user import UserService" in output
+
+
+# ---------------------------------------------------------------------------
+# Multi-entity templates: dependencies.py.j2, conftest_integration.py.j2
+# ---------------------------------------------------------------------------
+
+
+def _render_multi_entity(jinja_env, template_name: str, entities: list) -> str:
+    """Render a multi-entity template with a list of entity dicts."""
+    template = jinja_env.get_template(template_name)
+    return template.render(entities=entities)
+
+
+MULTI_ENTITY_CONTEXT = [
+    {"name": "User", "snake_name": "user"},
+    {"name": "Post", "snake_name": "post"},
+    {"name": "Category", "snake_name": "category"},
+]
+
+
+def test_dependencies_template_valid_python(jinja_env):
+    output = _render_multi_entity(jinja_env, "dependencies.py.j2", MULTI_ENTITY_CONTEXT)
+    try:
+        ast.parse(output)
+    except SyntaxError as e:
+        pytest.fail(f"dependencies.py.j2 produced invalid Python: {e}\n\n{output}")
+
+
+def test_dependencies_has_all_entity_providers(jinja_env):
+    output = _render_multi_entity(jinja_env, "dependencies.py.j2", MULTI_ENTITY_CONTEXT)
+    assert "get_user_service" in output
+    assert "get_post_service" in output
+    assert "get_category_service" in output
+    assert "get_db_session" in output
+
+
+def test_dependencies_imports_repos_and_services(jinja_env):
+    output = _render_multi_entity(jinja_env, "dependencies.py.j2", MULTI_ENTITY_CONTEXT)
+    assert "from app.repositories.user import UserRepository" in output
+    assert "from app.services.user import UserService" in output
+
+
+def test_conftest_integration_valid_python(jinja_env):
+    output = _render_multi_entity(jinja_env, "conftest_integration.py.j2", MULTI_ENTITY_CONTEXT)
+    try:
+        ast.parse(output)
+    except SyntaxError as e:
+        pytest.fail(f"conftest_integration.py.j2 produced invalid Python: {e}\n\n{output}")
+
+
+def test_conftest_integration_has_client_fixture(jinja_env):
+    output = _render_multi_entity(jinja_env, "conftest_integration.py.j2", MULTI_ENTITY_CONTEXT)
+    assert "async def client" in output
+    assert "FakeUserRepository" in output
+    assert "FakePostRepository" in output
+    assert "FakeCategoryRepository" in output
+
+
+def test_conftest_integration_overrides_all_services(jinja_env):
+    output = _render_multi_entity(jinja_env, "conftest_integration.py.j2", MULTI_ENTITY_CONTEXT)
+    assert "get_user_service" in output
+    assert "get_post_service" in output
+    assert "get_category_service" in output
+    assert "dependency_overrides.clear()" in output

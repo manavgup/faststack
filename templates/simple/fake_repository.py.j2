@@ -1,11 +1,12 @@
 """Fake {{ entity.name }} repository for unit testing."""
 
 import uuid
+from datetime import UTC, datetime
 from uuid import UUID
 
 from faststack_core.exceptions.domain import NotFoundError
 
-from app.models.{{ entity.name | lower }} import {{ entity.name }}
+from app.models.{{ entity.name | snake_case }} import {{ entity.name }}
 
 
 class Fake{{ entity.name }}Repository:
@@ -25,7 +26,13 @@ class Fake{{ entity.name }}Repository:
         return items[skip : skip + limit]
 
     async def create(self, data: dict) -> {{ entity.name }}:
+        now = datetime.now(UTC)
         entity = {{ entity.name }}(id=uuid.uuid4(), **data)
+        # Populate audit fields that SQLAlchemy normally sets via column defaults
+        if hasattr(entity, "created_at") and entity.created_at is None:
+            entity.created_at = now
+        if hasattr(entity, "updated_at") and entity.updated_at is None:
+            entity.updated_at = now
         self._store[entity.id] = entity
         return entity
 

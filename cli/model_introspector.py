@@ -139,8 +139,7 @@ def introspect_model(path: Path) -> EntityDefinition:
     relationships = list(explicit_relationships)
     for fk_rel in fk_relationships:
         has_explicit = any(
-            r.target_entity == fk_rel.target_entity
-            and r.type in ("many_to_one", "self_referential")
+            r.target_entity == fk_rel.target_entity and r.type in ("many_to_one", "self_referential")
             for r in explicit_relationships
         )
         if not has_explicit:

@@ -11,6 +11,6 @@ setup_app(app, FastStackConfig(
 ))
 
 {% for entity in entities %}
-from app.api.routes.{{ entity.name | lower }} import router as {{ entity.name | lower }}_router
-app.include_router({{ entity.name | lower }}_router, prefix="/api")
+from app.api.routes.{{ entity.name | snake_case }} import router as {{ entity.name | snake_case }}_router
+app.include_router({{ entity.name | snake_case }}_router, prefix="/api")
 {% endfor %}

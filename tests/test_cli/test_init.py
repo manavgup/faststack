@@ -197,9 +197,7 @@ class TestFileContents:
         content = (tmp_path / "cool-app" / ".project-config.yaml").read_text()
         assert "project_name: cool-app" in content
 
-    def test_docker_compose_contains_project_name(
-        self, runner: CliRunner, tmp_path: Path, monkeypatch
-    ):
+    def test_docker_compose_contains_project_name(self, runner: CliRunner, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         runner.invoke(cli_group, ["init", "cool-app"], catch_exceptions=False)
 
@@ -251,9 +249,7 @@ class TestWithEntitiesFlag:
 class TestErrorCases:
     """Test error handling in ``faststack init``."""
 
-    def test_error_when_directory_already_exists(
-        self, runner: CliRunner, tmp_path: Path, monkeypatch
-    ):
+    def test_error_when_directory_already_exists(self, runner: CliRunner, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / "existing-project").mkdir()
 

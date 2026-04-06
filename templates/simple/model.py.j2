@@ -24,7 +24,7 @@
     "string": "String", "text": "Text", "integer": "Integer",
     "float": "Float", "boolean": "Boolean", "datetime": "DateTime",
     "date": "Date", "decimal": "Numeric", "json": "JSON",
-    "jsonb": "JSONB", "array": "ARRAY", "enum": "Enum"
+    "jsonb": "JSON", "array": "ARRAY", "enum": "Enum"
 } -%}
 {%- set _seen = namespace(types=[]) -%}
 {%- for field in entity.fields -%}
@@ -38,21 +38,22 @@
 {%-   endif -%}
 {%- endfor -%}
 {%- set sa_imports = _seen.types | sort -%}
-{#- Collect TYPE_CHECKING targets -#}
-{%- set _tc = namespace(targets=[]) -%}
-{%- for rel in entity.relationships -%}
-{%-   if rel.type != "self_referential" and rel.target_entity != entity.name -%}
-{%-     if rel.target_entity not in _tc.targets %}{% set _tc.targets = _tc.targets + [rel.target_entity] %}{% endif -%}
+{#- Collect repr fields (required fields + first 2 optional, max 5 total) -#}
+{%- set _repr_fields = namespace(items=[]) -%}
+{%- for field in entity.fields -%}
+{%-   if field.required and not field.references and _repr_fields.items | length < 5 -%}
+{%-     set _repr_fields.items = _repr_fields.items + [field.name] -%}
+{%-   endif -%}
+{%- endfor -%}
+{%- for field in entity.fields -%}
+{%-   if not field.required and not field.references and _repr_fields.items | length < 3 -%}
+{%-     set _repr_fields.items = _repr_fields.items + [field.name] -%}
 {%-   endif -%}
 {%- endfor -%}
 {#- ========== Begin output ========== -#}
 """{{ entity.name }} model."""
-{%- if _tc.targets %}
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-{%- endif %}
 {%- if ns.need_enum %}
 
 import enum
@@ -79,13 +80,6 @@ from sqlalchemy import {{ sa_imports | join(", ") }}
 from sqlalchemy.orm import Mapped, mapped_column{{ ", relationship" if ns.need_relationship else "" }}
 
 from faststack_core.base.entity import {{ entity.base }}
-{%- if _tc.targets %}
-
-if TYPE_CHECKING:
-{%- for target in _tc.targets | sort %}
-    from app.models.{{ target | lower }} import {{ target }}
-{%- endfor %}
-{%- endif %}
 {#- ---------- Enum classes ---------- -#}
 {%- for field in entity.fields %}
 {%- if field.type == "enum" and field.enum_values %}
@@ -114,9 +108,9 @@ class {{ entity.name }}({{ entity.base }}):
 {%- endif %}
 {%- else %}
 {%- if field.required %}
-    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(ForeignKey("{{ field.references | lower }}s.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }})
+    {{ field.name }}: Mapped[uuid.UUID] = mapped_column(ForeignKey("{{ field.references | snake_case | pluralize }}.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }})
 {%- else %}
-    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("{{ field.references | lower }}s.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }}, default=None)
+    {{ field.name }}: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("{{ field.references | snake_case | pluralize }}.id", ondelete="{{ field.on_delete }}"){{ ", unique=True" if field.unique else "" }}, default=None)
 {%- endif %}
 {%- endif %}
 {#- ---- String ---- -#}
@@ -189,12 +183,12 @@ class {{ entity.name }}({{ entity.base }}):
 {%- else %}
     {{ field.name }}: Mapped[dict | None] = mapped_column(JSON, default=None)
 {%- endif %}
-{#- ---- JSONB ---- -#}
+{#- ---- JSONB (uses JSON for cross-backend compat; switch to JSONB for PostgreSQL) ---- -#}
 {%- elif field.type == "jsonb" %}
 {%- if field.required %}
-    {{ field.name }}: Mapped[dict] = mapped_column(JSONB)
+    {{ field.name }}: Mapped[dict] = mapped_column(JSON)
 {%- else %}
-    {{ field.name }}: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    {{ field.name }}: Mapped[dict | None] = mapped_column(JSON, default=None)
 {%- endif %}
 {#- ---- Array ---- -#}
 {%- elif field.type == "array" %}
@@ -216,26 +210,30 @@ class {{ entity.name }}({{ entity.base }}):
 {%- endif %}
 {%- endif %}
 {%- endfor %}
-{#- ---------- Relationships ---------- -#}
+{#- ---------- Relationships (forward only, no back_populates) ---------- -#}
 {%- for rel in entity.relationships %}
 {%- if rel.type == "many_to_one" %}
 
-    # Relationship to {{ rel.target_entity }}
-    {{ rel.target_entity | lower }}: Mapped["{{ rel.target_entity }}"] = relationship(back_populates="{{ rel.back_populates }}")
+    {{ rel.target_entity | snake_case }}: Mapped["{{ rel.target_entity }}"] = relationship()
 {%- elif rel.type == "self_referential" %}
 
-    # Self-referential relationship
     parent: Mapped["{{ entity.name }} | None"] = relationship(
-        back_populates="{{ rel.back_populates }}",
         remote_side="[{{ entity.name }}.id]",
     )
-    {{ rel.back_populates }}: Mapped[list["{{ entity.name }}"]] = relationship(back_populates="parent")
 {%- elif rel.type == "many_to_many" %}
 
-    # Many-to-many relationship to {{ rel.target_entity }}
     {{ rel.field_name }}: Mapped[list["{{ rel.target_entity }}"]] = relationship(
-        back_populates="{{ rel.back_populates }}",
-        secondary="{{ entity.name | lower }}_{{ rel.target_entity | lower }}",
+        secondary="{{ entity.name | snake_case }}_{{ rel.target_entity | snake_case }}",
     )
 {%- endif %}
 {%- endfor %}
+
+    def __repr__(self) -> str:
+        return (
+            "{{ entity.name }}("
+            f"id={self.id!r}"
+{%- for fname in _repr_fields.items %}
+            f", {{ fname }}={self.{{ fname }}!r}"
+{%- endfor %}
+            ")"
+        )

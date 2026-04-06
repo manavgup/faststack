@@ -1,19 +1,36 @@
 """Integration tests for {{ entity.name }} API endpoints."""
 
-# TODO: Wire up the `client` fixture with FastAPI TestClient + DI overrides (Phase 6).
-
 import uuid
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 
-async def test_create_{{ entity.name | lower }}(client):
+async def test_create_{{ entity.name | snake_case }}(client):
     response = await client.post(
         "/api/{{ entity.table_name }}",
         json={
-{%- for field in entity.fields if field.required and not field.references %}
-            "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}"10.00"{% else %}"test_{{ field.name }}"{% endif %},
+{%- for field in entity.fields if field.required %}
+{%- if field.references %}
+            "{{ field.name }}": str(uuid.uuid4()),
+{%- elif field.type == "string" or field.type == "text" %}
+            "{{ field.name }}": "test_{{ field.name }}",
+{%- elif field.type == "integer" %}
+            "{{ field.name }}": 1,
+{%- elif field.type == "float" %}
+            "{{ field.name }}": 1.0,
+{%- elif field.type == "boolean" %}
+            "{{ field.name }}": True,
+{%- elif field.type == "enum" %}
+            "{{ field.name }}": "{{ field.enum_values[0] }}",
+{%- elif field.type == "decimal" %}
+            "{{ field.name }}": "10.00",
+{%- elif field.type == "json" or field.type == "jsonb" %}
+            "{{ field.name }}": {"key": "value"},
+{%- elif field.type == "uuid" %}
+            "{{ field.name }}": str(uuid.uuid4()),
+{%- else %}
+            "{{ field.name }}": "test_{{ field.name }}",
+{%- endif %}
 {%- endfor %}
         },
     )
@@ -28,6 +45,6 @@ async def test_list_{{ entity.table_name }}(client):
     assert isinstance(response.json(), list)
 
 
-async def test_get_{{ entity.name | lower }}_not_found(client):
+async def test_get_{{ entity.name | snake_case }}_not_found(client):
     response = await client.get(f"/api/{{ entity.table_name }}/{uuid.uuid4()}")
     assert response.status_code == 404

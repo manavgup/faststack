@@ -1,0 +1,43 @@
+{#- --------------------------------------------------------------------------
+    dependencies.py.j2 — Generate DI providers for all entities.
+
+    Template variables:
+      entities  — list of dicts with keys: name (str), snake_name (str)
+   -------------------------------------------------------------------------- -#}
+"""Dependency injection providers for FastAPI routes."""
+
+from collections.abc import AsyncGenerator
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from faststack_core.database.session import DatabaseConfig, create_engine, create_session_factory
+
+_db_config = DatabaseConfig(url=settings.database_url)
+_engine = create_engine(_db_config)
+_session_factory = create_session_factory(_engine)
+
+
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Yield a transactional async database session."""
+    async with _session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+{% for entity in entities %}
+from app.repositories.{{ entity.snake_name }} import {{ entity.name }}Repository
+from app.services.{{ entity.snake_name }} import {{ entity.name }}Service
+
+
+async def get_{{ entity.snake_name }}_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> {{ entity.name }}Service:
+    """Provide {{ entity.name }}Service with a repository bound to the current session."""
+    return {{ entity.name }}Service({{ entity.name }}Repository(session))
+
+{% endfor %}

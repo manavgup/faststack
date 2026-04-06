@@ -6,9 +6,9 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.{{ entity.name | lower }} import {{ entity.name }}Service
+from app.services.{{ entity.name | snake_case }} import {{ entity.name }}Service
 from faststack_core.exceptions.domain import NotFoundError
-from tests.unit.fakes.{{ entity.name | lower }}_repository import Fake{{ entity.name }}Repository
+from tests.unit.fakes.{{ entity.name | snake_case }}_repository import Fake{{ entity.name }}Repository
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def service(repo):
 async def test_create(service):
     entity = await service.create({
 {%- for field in entity.fields if field.required and not field.references %}
-        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% else %}"test_{{ field.name }}"{% endif %},
+        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% elif field.type == "json" or field.type == "jsonb" %}{"key": "value"}{% else %}"test_{{ field.name }}"{% endif %},
 {%- endfor %}
     })
     assert entity.id is not None
@@ -36,7 +36,7 @@ async def test_create(service):
 async def test_get(service):
     entity = await service.create({
 {%- for field in entity.fields if field.required and not field.references %}
-        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% else %}"test_{{ field.name }}"{% endif %},
+        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% elif field.type == "json" or field.type == "jsonb" %}{"key": "value"}{% else %}"test_{{ field.name }}"{% endif %},
 {%- endfor %}
     })
     found = await service.get(entity.id)
@@ -51,7 +51,7 @@ async def test_get_not_found(service):
 async def test_list(service):
     await service.create({
 {%- for field in entity.fields if field.required and not field.references %}
-        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% else %}"test_{{ field.name }}"{% endif %},
+        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% elif field.type == "json" or field.type == "jsonb" %}{"key": "value"}{% else %}"test_{{ field.name }}"{% endif %},
 {%- endfor %}
     })
     result = await service.list()
@@ -61,7 +61,7 @@ async def test_list(service):
 async def test_delete(service):
     entity = await service.create({
 {%- for field in entity.fields if field.required and not field.references %}
-        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% else %}"test_{{ field.name }}"{% endif %},
+        "{{ field.name }}": {% if field.type == "string" or field.type == "text" %}"test_{{ field.name }}"{% elif field.type == "integer" %}1{% elif field.type == "float" %}1.0{% elif field.type == "boolean" %}True{% elif field.type == "uuid" %}uuid.uuid4(){% elif field.type == "datetime" %}datetime.now(UTC){% elif field.type == "enum" %}"{{ field.enum_values[0] }}"{% elif field.type == "decimal" %}Decimal("10.00"){% elif field.type == "json" or field.type == "jsonb" %}{"key": "value"}{% else %}"test_{{ field.name }}"{% endif %},
 {%- endfor %}
     })
     await service.delete(entity.id)
