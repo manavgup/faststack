@@ -1,12 +1,24 @@
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#   FastStack — Dependency Review
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ===============================================================
+# 🔍 Dependency Review — Vulnerabilities & Licenses
+# ===============================================================
+#
+# This workflow:
+#   - Diffs dependency changes introduced by PRs to `main`
+#   - **Fails** when a change introduces either:
+#       ↳ A vulnerability of severity >= MODERATE
+#       ↳ A dependency under a strong-copyleft license incompatible
+#         with this project's MIT license (see deny-list below)
+#
+# Only runs when dependency files change (pyproject.toml, poetry.lock).
+# Skips draft PRs.
+#
+# References
+# ──────────
+#   - Marketplace:  https://github.com/marketplace/actions/dependency-review
+#   - Source code:  https://github.com/github/dependency-review-action  (MIT)
 #
 # Author:  Manav Gupta <manavg@gmail.com>
-#
-# Scans dependency changes in PRs for known vulnerabilities and
-# restricted licenses. Only runs when pyproject.toml or poetry.lock change.
-#
+# ===============================================================
 
 name: Dependency Review
 
@@ -16,10 +28,14 @@ on:
     paths:
       - "pyproject.toml"
       - "poetry.lock"
+      - ".github/workflows/dependency-review.yml"
 
+# -----------------------------------------------------------------
+# Minimal permissions — principle of least privilege
+# -----------------------------------------------------------------
 permissions:
-  contents: read
-  pull-requests: write
+  contents: read       # for actions/checkout
+  pull-requests: write # post PR comment on failure
 
 jobs:
   dependency-review:
@@ -27,14 +43,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: "!github.event.pull_request.draft"
+
     steps:
-      - name: Checkout code
+      # ─────────── Checkout ───────────
+      - name: ⬇️  Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Dependency Review
+      # ─────────── Scan ───────────
+      - name: 🔍  Dependency & License gate
         uses: actions/dependency-review-action@v4
         with:
+          # ───────── Vulnerability policy ─────────
           fail-on-severity: moderate
+
+          # ───────── License policy ─────────
+          # Deny strong-copyleft licenses incompatible with MIT.
+          # LGPL/MPL are weak copyleft and allowed.
           deny-licenses: GPL-3.0, AGPL-3.0, SSPL-1.0
+
+          # ───────── UX ─────────
+          comment-summary-in-pr: on-failure

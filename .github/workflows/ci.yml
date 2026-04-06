@@ -1,19 +1,25 @@
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#   FastStack CI — Lint, Type Check, Test & Package
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ===============================================================
+# 🔧 CI Workflow — Lint, Type Check, Test, Pre-commit & Package
+# ===============================================================
 #
-# Author:  Manav Gupta <manavg@gmail.com>
+# This workflow:
+#   - Runs ruff + black format checks                   (lint)
+#   - Runs mypy static type analysis                    (typecheck)
+#   - Runs pytest with 85% coverage threshold           (test)
+#   - Validates all pre-commit hooks                    (pre-commit)
+#   - Builds wheel/sdist and validates with twine       (package)
 #
-# Jobs:
-#   lint       — ruff + black formatting checks
-#   typecheck  — mypy static type analysis
-#   test       — pytest with 85% coverage threshold
-#   pre-commit — validate all pre-commit hooks
-#   package    — build wheel/sdist and validate with twine
-#
-# Triggers on push to main and PRs. Skips draft PRs.
+# All jobs run in parallel. Skips draft PRs.
 # Cancels stale runs on the same branch.
 #
+# References
+# ──────────
+#   - Poetry:      https://python-poetry.org/docs/
+#   - Ruff:        https://docs.astral.sh/ruff/
+#   - Pre-commit:  https://pre-commit.com/
+#
+# Author:  Manav Gupta <manavg@gmail.com>
+# ===============================================================
 
 name: CI
 
@@ -28,15 +34,19 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# -----------------------------------------------------------------
+# Minimal permissions — principle of least privilege
+# -----------------------------------------------------------------
 permissions:
   contents: read
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------
 # Shared environment
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------
 env:
   PYTHONUNBUFFERED: "1"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHON_VERSION: "3.12"
 
 jobs:
 
@@ -48,34 +58,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+
     steps:
-      - name: Checkout code
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Python
+      - name: 🐍  Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
+      - name: 📦  Install Poetry
         run: pipx install poetry
 
-      - name: Cache Poetry dependencies
+      - name: 💾  Cache Poetry dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
           restore-keys: ${{ runner.os }}-poetry-
 
-      - name: Install dependencies
+      - name: 📦  Install dependencies
         run: poetry install --no-interaction
 
-      - name: Ruff check
+      # ─────────── Checks ───────────
+      - name: 🔍  Ruff lint
         run: poetry run ruff check .
 
-      - name: Black check
+      - name: 🎨  Black format check
         run: poetry run black --check .
 
   # =========================================================================
@@ -86,31 +99,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+
     steps:
-      - name: Checkout code
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Python
+      - name: 🐍  Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
+      - name: 📦  Install Poetry
         run: pipx install poetry
 
-      - name: Cache Poetry dependencies
+      - name: 💾  Cache Poetry dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
           restore-keys: ${{ runner.os }}-poetry-
 
-      - name: Install dependencies
+      - name: 📦  Install dependencies
         run: poetry install --no-interaction
 
-      - name: Mypy
+      # ─────────── Check ───────────
+      - name: 🔎  Mypy type check
         run: poetry run mypy faststack_core/ cli/
 
   # =========================================================================
@@ -128,30 +144,32 @@ jobs:
         python: ["3.12"]
 
     steps:
-      - name: Checkout code
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Python ${{ matrix.python }}
+      - name: 🐍  Setup Python ${{ matrix.python }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install Poetry
+      - name: 📦  Install Poetry
         run: pipx install poetry
 
-      - name: Cache Poetry dependencies
+      - name: 💾  Cache Poetry dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
           restore-keys: ${{ runner.os }}-poetry-
 
-      - name: Install dependencies
+      - name: 📦  Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run tests with coverage
+      # ─────────── Test ───────────
+      - name: 🧪  Run tests with coverage
         run: |
           poetry run pytest \
             --cov \
@@ -160,7 +178,7 @@ jobs:
             --cov-fail-under=85 \
             -v --tb=short
 
-      - name: Upload coverage report
+      - name: 📊  Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -175,25 +193,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+
     steps:
-      - name: Checkout code
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Python
+      - name: 🐍  Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache pre-commit environments
+      - name: 💾  Cache pre-commit environments
         uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: ${{ runner.os }}-pre-commit-
 
-      - name: Run pre-commit
+      # ─────────── Check ───────────
+      - name: ✅  Run pre-commit hooks
         uses: pre-commit/action@v3.0.1
 
   # =========================================================================
@@ -204,24 +225,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+
     steps:
-      - name: Checkout code
+      # ─────────── Setup ───────────
+      - name: ⬇️  Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Python
+      - name: 🐍  Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
+      - name: 📦  Install Poetry
         run: pipx install poetry
 
-      - name: Build package
+      # ─────────── Build & Validate ───────────
+      - name: 🔨  Build distributions
         run: poetry build
 
-      - name: Validate package
+      - name: ✅  Validate package metadata (twine)
         run: |
           pip install twine
           twine check dist/*
