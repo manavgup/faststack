@@ -80,9 +80,7 @@ class TestProjectScaffoldSmoke:
         assert result.exit_code == 0
         assert "Created project" in result.output
 
-    def test_all_expected_directories_exist(
-        self, runner: CliRunner, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_all_expected_directories_exist(self, runner: CliRunner, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.chdir(tmp_path)
         runner.invoke(cli_group, ["init", "blog"], catch_exceptions=False)
         project = tmp_path / "blog"
@@ -121,9 +119,7 @@ class TestProjectScaffoldSmoke:
         for f in expected_files:
             assert (project / f).is_file(), f"Missing: {f}"
 
-    def test_all_generated_python_is_valid(
-        self, runner: CliRunner, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_all_generated_python_is_valid(self, runner: CliRunner, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.chdir(tmp_path)
         runner.invoke(cli_group, ["init", "blog"], catch_exceptions=False)
         project = tmp_path / "blog"
@@ -141,9 +137,7 @@ class TestProjectScaffoldSmoke:
                 rel = py_file.relative_to(project)
                 pytest.fail(f"Invalid Python in {rel}: {e}")
 
-    def test_project_config_has_structure(
-        self, runner: CliRunner, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_project_config_has_structure(self, runner: CliRunner, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.chdir(tmp_path)
         runner.invoke(cli_group, ["init", "blog"], catch_exceptions=False)
 
