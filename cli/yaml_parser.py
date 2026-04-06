@@ -214,27 +214,4 @@ def parse_entities_yaml(path: Path) -> list[EntityDefinition]:
 
             entity.relationships.append(rel)
 
-    # Third pass: add reverse one_to_many relationships on target entities.
-    # For each many_to_one from A → B, add one_to_many from B → A so both
-    # sides have matching back_populates and SQLAlchemy mappers resolve.
-    entity_map = {e.name: e for e in entities}
-    for entity in entities:
-        for rel in list(entity.relationships):
-            if rel.type != "many_to_one":
-                continue
-            target = entity_map[rel.target_entity]
-            reverse_exists = any(
-                r.type == "one_to_many" and r.target_entity == entity.name
-                for r in target.relationships
-            )
-            if not reverse_exists:
-                target.relationships.append(
-                    RelationshipDefinition(
-                        field_name=rel.back_populates,
-                        type="one_to_many",
-                        target_entity=entity.name,
-                        back_populates=rel.target_entity.lower(),
-                    )
-                )
-
     return entities
